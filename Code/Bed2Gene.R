@@ -30,16 +30,18 @@ geneLocs <- readRDS(geneLocsFile)
 
 option_list = list(
   make_option(c("-b", "--bedFiles"), type="character", default=NULL, 
-              help="Bed file or files (space seperated)" ,
+              help="Bed file or files (space seperated) (-b or -B required)" ,
               metavar="character"),
   make_option(c("-B", "--bedDir"), type="character", default=NULL, 
-              help="Directory containing bed files to process",
+              help="Directory containing bed files to process (-b or -B required)",
               metavar="character"),
   make_option(c("-g", "--geneFiles"), type="character", default=NULL,
-              help="List of genes to assign bed intervals to",
+              help="List of genes to assign bed intervals to (optional)",
               metavar="character"),
   make_option(c("-o", "--out"), type="character", default=NULL, 
-              help="Output directory", metavar="character"))
+              help="Output directory", metavar="character"),
+  make_option(c("-p", "--prefix"), type="character", default=NULL, 
+              help="Output File Prefix (optional)", metavar="character"))
   
 
 ## ################# ##
@@ -75,7 +77,7 @@ if (!is.null(opt$geneFiles)){
                     " not found!"), call.=FALSE )
     }   
 }else{
-    print("Now gene file provided. Examining all possible genes intervals may vall on.")
+    print("No gene file provided. Examining all possible genes intervals may vall on.")
     ## stop("Must specify one or more gene files.", call.=FALSE)
 }
 ## ENSURE RUN DIRECTORY EXISTS 
@@ -84,6 +86,11 @@ if (!is.null(opt$PatDir)){
         stop(paste0("Input file : ",opt$bedDir, " not found!"), call.=FALSE )
     }
 }
+prefix = ""
+if (!is.null(opt$Prefix)){
+    prefix = opt$Prefix
+}
+
 ## ENSURE THE OUTPUT DIRCTORY EXISTS
 if (dir.exists(dirname(opt$out)) == FALSE){
   stop(paste0("Output directory : ", dirname(opt$out), " not found!"), call.=FALSE )
@@ -109,7 +116,7 @@ outDir <- opt$out
 
 for (file in bedFiles){
     
-    newBedFile <- bed2gene(file, genes, geneLocs, outDir)
+    bed2gene(file, genes, geneLocs, prefix, outDir)
 
 }
              

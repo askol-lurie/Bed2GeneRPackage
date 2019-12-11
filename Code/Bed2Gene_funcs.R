@@ -16,7 +16,7 @@ getGenes <- function(geneFiles){
     return(genes)
 }
         
-bed2gene <- function(file, genes = c(), geneLocs, outDir){
+bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
 
     if (length(genes) > 0){
         
@@ -25,7 +25,9 @@ bed2gene <- function(file, genes = c(), geneLocs, outDir){
         if (length(miss) > 0){
             
             fileMiss <- paste0(outDir, "/MissGenes.txt")
-            print(paste0("The following genes were not found in the reference gene position list. List of unfound genes printed to ", fileMiss))
+            print(paste0("The following genes were not found in the reference gene position list :"))
+            print(miss)
+            print(paste0("List of unfound genes printed to ", fileMiss))
             write.table(file = fileMiss, miss, quote=F, row.names = F, col.names=F)
         }
         
@@ -34,51 +36,74 @@ bed2gene <- function(file, genes = c(), geneLocs, outDir){
     }
 
     ## GET BED AND CONVERT TO GRANGE OBJECT
-    bed <- read.table(file = file, as.is=T, header=F)
+    bed <- read.table(file = file, as.is=T, header=T)
     names(bed)[1:3] <- c("chr","start","stop")
     bed$strand = "+"
     
-    bed <- makeGRangesFromDataFrame(bed, keep.extra.columns=FALSE, seqnames.field = "chr", 
+    bed <- makeGRangesFromDataFrame(bed, keep.extra.columns=TRUE, seqnames.field = "chr", 
                                     start.field = "start", end.field = "stop",
                                     strand.field = "strand")
     
     ## FIND THE GENE(S) THAT AN INTERVAL OVERLAPS WITH
     ol <- as.data.frame(findOverlaps(bed,geneLocs, type="any", ignore.strand=TRUE ))
-    ol <- ol %>% group_by(queryHits) %>%
-        mutate(gene = paste(geneLocs$gene[subjectHits],collapse=";")) %>%
-        as.data.frame()
-    ## ASSIGN GENE(S) TO INTERVALS
-    bed$gene = ""
-    bed$gene[ol$queryHits] <- ol$gene
-    
-    outFile <- basename(file)
-    outFile <- gsub("\\..+","_wGenes.bed", outFile)
-    outFile <- paste0(outDir,"/", outFile)
 
+    ol <- ol %>% mutate(gene = geneLocs$gene[subjectHits])
+
+    ## remove multiple lines for each unique inverval-gene entry
+    ol <- ol %>% group_by(queryHits, gene) %>% filter(row_number() == 1)
+
+    ## if multiple genes map to the same interval then combined gene names and
+    ## remove multiple occurance of interval
+    ol <- ol %>% group_by(queryHits) %>% mutate( ifelse(n() > 1, paste(gene,collapse=";"), gene) )%>%
+        filter(row_number() == 1)
+        
+    ## ASSIGN GENE(S) TO INTERVALS
+    bed$gene_pred = ""
+    bed$gene_pred[ol$queryHits] <- ol$gene
+
+    if (prefix != ""){
+        outFile <- basename(file)        
+        outFile <- gsub("\\..+","", outFile)
+    }else{
+        outFile <- prefix
+    }
+    outFile <- paste0(outFile , "_")
+    
+    file <- paste0(outDir,"/", outFile, "AllInts_wGenes.bed")
+    write.table(file = file, bed, quote=F, row.names=F, col.names=F,
+                sep="\t")
+    print(paste0("Wrote bed file with gene names to ",file))
+    
     if (length(genes) > 0){
-        ## DETERMINE IF ANY GENES IN GENES DO NOT HAVE BED INTERVALS ##
+        ## DETERMINE IF ANY GENES IN GENE LIST DO NOT HAVE BED INTERVALS ##
         missedGenes <- genes[genes %in% unique(bed$gene) == F]
         
         if (length(missedGenes) > 0){
             
             missedGenesTbl <- as.data.frame(geneLocs[which(geneLocs$gene %in% missedGenes)])
             
-            missedFile <- basename(file)
-            missedFile <- gsub("\\..+","_GenesWoIntervals.txt", missedFile)
-            missedFile <- paste0(outDir, "/", missedFile)
-            
-            write.table(file = missedFile, missedGenesTbl, quote=F, row.names=F, col.names=T, sep="\t")
+            file <- paste0(outDir,"/", outFile, "GenesWoIntervals.txt")
+            write.table(file = file, missedGenesTbl, quote=F, row.names=F, col.names=T, sep="\t")
             
             print(paste0(length(missedGenes), " gene did not have intervals overlapping them!"))
-            print(paste0("Missed genes are written to ",missedFile))
-        }
-        
+            print(paste0(unique(missedGenesTbl$gene), collapse=", "))
+            print(paste0("Missed genes are written to ",file))
+        }                
     }
-    
-    write.table(file = outFile, bed, quote=F, row.names=F, col.names=F,
-                sep="\t")
-    print(paste0("Wrote bed file with gene names to ",outFile))
-    return(outFile)
+
+    ## IF BED FILE CONTAINED GENES (COLUMN NAME gene)
+    ## then also output bed intervals with those genes (given name) only ##
+    bed <- bed %>% as.data.frame()
+    if (any(names(bed) == "gene")){
+
+        bed <- bed %>% rename(gene_given = gene) %>% filter(gene_given %in% genes)
+        file <- paste0(outDir,"/", outFile, "GivenGenesOnly.bed")
+        write.table(file = file, bed, quote=F, row.names=F, col.names=T, sep="\t")
+        print("Writing bed intervals containing genes from gene file")
+        print(paste0("Wrote ",file))
+    }    
+   
+    return()
 }
 
 makeFastGenePos <- function(file, outFile, keepXtrans = FALSE, keepNR = FALSE){
@@ -117,19 +142,23 @@ exonify <- function(data){
         if (i%%5000 == 0){
             print(paste0("Working on transcript ",i, " of ",nrow(data)))
         }
-        tran = d$name[i]
-        gene = d$name2[i]
-        strand = d$strand[i]
-        chrom = d$chrom[i]
-        tmp <- cbind(strsplit(d$exonStarts[i], split=",")[[1]],
-                     strsplit(d$exonEnds[i], split=",")[[1]])
+        tran = data$name[i]
+        gene = data$name2[i]
+        strand = data$strand[i]
+        chrom = data$chrom[i]
+        tmp <- cbind(strsplit(data$exonStarts[i], split=",")[[1]],
+                     strsplit(data$exonEnds[i], split=",")[[1]])
         de[[i]] <- cbind(chrom, tmp, gene, strand, tran)
     }
     
     de <- do.call(rbind, de)
 
-    de <- as.data.frame(de, string.as.factors = FALSE)
+    de <- as.data.frame(de, string.as.factors = FALSE)    
     names(de) <- c("chr","start","end","gene","strand","tran")
+
+    ## keep distinct intervals (means will delete transcript names) ##
+    print("Removing duplicate intervals (as a result of mult transcripts per gene)")
+    de <- de %>% group_by(chr,start,end,gene) %>% filter(row_number() == 1) %>% ungroup()
     
     return(de)
 }
@@ -140,6 +169,7 @@ if (0){
     ## This is how the gene position file was made ##
     
     ## RESOURCE FILES ##
+    ## ResourceDir <- "/home/askol/Projects/Bed2Gene/Resources/"
     ## UCSCGene37fast <- paste0(ResourceDir,"GeneStartEnd37.rds")
     UCSCGene37fast <- paste0(ResourceDir,"GeneExons37.rds")
     UCSCGeneFile37 <- paste0(ResourceDir,"Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
