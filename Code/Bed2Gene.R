@@ -22,7 +22,9 @@ source(paste0(SCRDIR,'/Bed2Gene_funcs.R'))
 ##############
 
 ## GET GENE LOCATIONS ##
-geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
+## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
+geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneExons37.rds")
+
 geneLocs <- readRDS(geneLocsFile)
 ############
 
@@ -73,7 +75,8 @@ if (!is.null(opt$geneFiles)){
                     " not found!"), call.=FALSE )
     }   
 }else{
-    stop("Must specify one or more gene files.", call.=FALSE)
+    print("Now gene file provided. Examining all possible genes intervals may vall on.")
+    ## stop("Must specify one or more gene files.", call.=FALSE)
 }
 ## ENSURE RUN DIRECTORY EXISTS 
 if (!is.null(opt$PatDir)){
