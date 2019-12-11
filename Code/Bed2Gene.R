@@ -26,6 +26,8 @@ source(paste0(SCRDIR,'/Bed2Gene_funcs.R'))
 geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneExons37.rds")
 
 geneLocs <- readRDS(geneLocsFile)
+geneLocs$gene <- as.character(geneLocs$gene)
+
 ############
 
 option_list = list(
@@ -87,8 +89,8 @@ if (!is.null(opt$PatDir)){
     }
 }
 prefix = ""
-if (!is.null(opt$Prefix)){
-    prefix = opt$Prefix
+if (!is.null(opt$prefix)){
+    prefix = opt$prefix
 }
 
 ## ENSURE THE OUTPUT DIRCTORY EXISTS

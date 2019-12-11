@@ -18,6 +18,7 @@ getGenes <- function(geneFiles){
         
 bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
 
+
     if (length(genes) > 0){
         
         ## FIRST SEE IF THERE ARE ANY MISSING GENES IN GENELOCS ##
@@ -54,14 +55,15 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
 
     ## if multiple genes map to the same interval then combined gene names and
     ## remove multiple occurance of interval
-    ol <- ol %>% group_by(queryHits) %>% mutate( ifelse(n() > 1, paste(gene,collapse=";"), gene) )%>%
+    ol <- ol %>% group_by(queryHits) %>%
+        mutate( gene = ifelse(n() > 1, paste(gene,collapse=";"), gene) )%>%
         filter(row_number() == 1)
         
     ## ASSIGN GENE(S) TO INTERVALS
     bed$gene_pred = ""
     bed$gene_pred[ol$queryHits] <- ol$gene
 
-    if (prefix != ""){
+    if (prefix == ""){
         outFile <- basename(file)        
         outFile <- gsub("\\..+","", outFile)
     }else{
