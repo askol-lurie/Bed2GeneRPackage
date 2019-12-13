@@ -18,7 +18,20 @@ getGenes <- function(geneFiles){
         
 bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
 
+    ## SET UP OUTPUT FILE PREFIX ##
+    if (prefix == ""){
+        outFile <- basename(file)        
+        outFile <- gsub("\\..+","", outFile)
+    }else{
+        outFile <- prefix
+    }
+    outFile <- paste0(outFile , "_")
 
+
+    ## IF GENE LIST PROVIDED THEN
+    ## 1. TRIM GENELOCS TO ONLY INCLUDE THOSE GENES,
+    ## 2. DETERMINE IF ANY GENES IN GENE LIST AREN'T IN GENELOCS,
+    ## 3. CREATE BED FILE CONTAIN THE EXONIC REGIONS OF GENES IN GENELIST
     if (length(genes) > 0){
         
         ## FIRST SEE IF THERE ARE ANY MISSING GENES IN GENELOCS ##
@@ -34,6 +47,14 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
         
         ## SEARCH ONLY FOR THE GENES IN GENES ##
         geneLocs <- geneLocs[which(geneLocs$gene %in% genes)]
+
+        ## WRITE OUT A BED FILE BASED ON THE EXONIC INTERVALS
+        geneLocBed <- as.data.frame(geneLocs)
+        names(geneLocBed) <- c("chr","start","stop","width","strand","gene","tran")
+        geneLocBed <- geneLocBed %>% group_by(chr, start, stop, gene) %>%
+            filter(row_number() == 1) %>% select(chr, start, stop, strand, gene)
+        FileOut = paste0(outDir,"/", outFile,"ExonIntervals.bed")
+        write.table(file = FileOut, geneLocBed, quote=F, row.names=F, col.names=TRUE, sep="\t")
     }
 
     ## GET BED AND CONVERT TO GRANGE OBJECT
@@ -62,34 +83,29 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
     ## ASSIGN GENE(S) TO INTERVALS
     bed$gene_pred = ""
     bed$gene_pred[ol$queryHits] <- ol$gene
-
-    if (prefix == ""){
-        outFile <- basename(file)        
-        outFile <- gsub("\\..+","", outFile)
-    }else{
-        outFile <- prefix
-    }
-    outFile <- paste0(outFile , "_")
     
-    file <- paste0(outDir,"/", outFile, "AllInts_wGenes.bed")
-    write.table(file = file, bed, quote=F, row.names=F, col.names=F,
+    FileOut <- paste0(outDir,"/", outFile, "AllInts_wGenes.bed")
+    write.table(file = FileOut, bed, quote=F, row.names=F, col.names=T,
                 sep="\t")
-    print(paste0("Wrote bed file with gene names to ",file))
-    
+    print(paste0("Wrote bed file with gene names to ",FileOut))
+
+
+    print(paste0("***** number of genes in genes ",length(genes)))
     if (length(genes) > 0){
         ## DETERMINE IF ANY GENES IN GENE LIST DO NOT HAVE BED INTERVALS ##
         missedGenes <- genes[genes %in% unique(bed$gene) == F]
-        
+        print(paste(length(genes), length(bed$gene), length(missedGenes),
+                    sum(genes %in% unique(bed$gene))))
         if (length(missedGenes) > 0){
             
             missedGenesTbl <- as.data.frame(geneLocs[which(geneLocs$gene %in% missedGenes)])
             
-            file <- paste0(outDir,"/", outFile, "GenesWoIntervals.txt")
-            write.table(file = file, missedGenesTbl, quote=F, row.names=F, col.names=T, sep="\t")
+            FileOut <- paste0(outDir,"/", outFile, "GenesWoIntervals.txt")
+            write.table(file = FileOut, missedGenesTbl, quote=F, row.names=F, col.names=T, sep="\t")
             
             print(paste0(length(missedGenes), " gene did not have intervals overlapping them!"))
             print(paste0(unique(missedGenesTbl$gene), collapse=", "))
-            print(paste0("Missed genes are written to ",file))
+            print(paste0("Missed genes are written to ",FileOut))
         }                
     }
 
@@ -99,12 +115,12 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
     if (any(names(bed) == "gene")){
 
         bed <- bed %>% rename(gene_given = gene) %>% filter(gene_given %in% genes)
-        file <- paste0(outDir,"/", outFile, "GivenGenesOnly.bed")
-        write.table(file = file, bed, quote=F, row.names=F, col.names=T, sep="\t")
+        FileOut <- paste0(outDir,"/", outFile, "GivenGenesOnly.bed")
+        write.table(file = FileOut, bed, quote=F, row.names=F, col.names=T, sep="\t")
         print("Writing bed intervals containing genes from gene file")
-        print(paste0("Wrote ",file))
+        print(paste0("Wrote ",FileOut))
     }    
-   
+
     return()
 }
 

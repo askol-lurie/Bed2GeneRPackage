@@ -18,5 +18,7 @@ File: <prefix>_GivenGenesOnly.bed
 
 What is it: This file is <prefix>_AllInts_wGenes.bed but only keeps the intervals which have provided gene names (in the bed file) that are also in the provided gene list.
 
+File: <prefix>_ExonIntervals.bed
 
+What is it: This file contains all the exonic intervals for the genes in geneLocs, which was created from the UCSC Table Browser using RefSeq data. It can be loaded into IGV to see the regions that were interogated.
 	
