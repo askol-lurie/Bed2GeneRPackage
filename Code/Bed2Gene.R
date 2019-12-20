@@ -79,7 +79,7 @@ if (!is.null(opt$geneFiles)){
                     " not found!"), call.=FALSE )
     }   
 }else{
-    print("No gene file provided. Examining all possible genes intervals may vall on.")
+    print("No gene file provided. Examining all possible genes intervals may fall on.")
     ## stop("Must specify one or more gene files.", call.=FALSE)
 }
 ## ENSURE RUN DIRECTORY EXISTS 

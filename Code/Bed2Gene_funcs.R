@@ -83,6 +83,9 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
     ## ASSIGN GENE(S) TO INTERVALS
     bed$gene_pred = ""
     bed$gene_pred[ol$queryHits] <- ol$gene
+
+    ## CHANGE CHROMOSOME COLUMN NAME BACK TO CHR INSTEAD OF SEQNAMES ##
+    bed <- bed %>% as.data.frame() %>% rename(chr = seqnames)
     
     FileOut <- paste0(outDir,"/", outFile, "AllInts_wGenes.bed")
     write.table(file = FileOut, bed, quote=F, row.names=F, col.names=T,
@@ -182,6 +185,39 @@ exonify <- function(data){
 }
       
 
+makeFastGenePos_GeneLevel <- function(file, outFile, keepXtrans = FALSE, keepNR = FALSE){
+
+    ## KEEPXM: SHOULD POSITIONS INCLUDE TRANSCRIPT THAT START WITH XM (COMPUTATIONAL TRANSCRIPTS)
+
+    ## SETTING START AND END TO BE THE MINIMUM AND MAXIMUM POS OBSERVED ##
+    ## FOR A GENE
+    d <- fread(file, header=T)
+    if (keepXtrans == FALSE){
+        d <- d %>% filter(substring(name,1,1) != "X")
+    }
+    if (keepNR == FALSE){
+        nrmv <- sum(substring(d$name, 1, 2) == "NR")
+        d <- d %>% filter(substring(name,1,2) != "NR")
+        print(paste0("Removing ", nrmv, " transcripts starting with NR (non-coding genes)"))
+    }
+    
+    d <- d %>% select(name2, chrom, txStart, txEnd) %>%
+        mutate(strand = "+") %>% rename(gene = name2) %>%
+        group_by(gene, chrom) %>% mutate(start = min(txStart, na.rm=T),
+                                         end = max(txEnd, na.rm=T)) %>%
+        filter(row_number() == 1) %>% ungroup() %>% select(-txStart, -txEnd)
+
+    ## 
+
+    rng <- makeGRangesFromDataFrame(d, keep.extra.columns = T, seqnames.field = "chrom",
+                                      start.field = "start", end.field = "end",
+                                   strand.field = "strand")
+
+    saveRDS(rng, file = outFile)
+    print(paste0("Saving gene info to ",outFile))
+    return(rng)
+}
+
 if (0){
 
     ## This is how the gene position file was made ##
@@ -193,4 +229,8 @@ if (0){
     UCSCGeneFile37 <- paste0(ResourceDir,"Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
 
     Gene37 <- makeFastGenePos(UCSCGeneFile37, UCSCGene37fast, keepXtrans = FALSE)
+
+    UCSCGene37fastGenes <- paste0(ResourceDir,"Genes37.rds")
+    Gene37_GeneLevel <- makeFastGenePos_GeneLevel(UCSCGeneFile37, UCSCGene37fastGenes,
+                                                  keepXtrans = FALSE, keepNR = FALSE)
 }
