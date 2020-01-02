@@ -71,6 +71,6 @@ gene2bed <- function(genes, geneLocs, prefix, outDir){
         dplyr::rename(chr = seqnames)
     
     write.table(file = geneIntFile, geneInts, quote=F, row.names=F, col.names=F, sep="\t")
-    print(paste0("Wrote intervals for ", nrow(geneInts), " to ",geneIntFile))
+    print(paste0("Wrote intervals for ", nrow(geneInts), " gene to ",geneIntFile))
 
 }

@@ -24,6 +24,7 @@ source(paste0(SCRDIR,'/Gene2Bed_funcs.R'))
 ## GET GENE LOCATIONS ##
 ## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
 geneLocsFile19 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
+geneLocsFile38 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
 
 ############
 
@@ -101,9 +102,12 @@ outDir <- opt$out
 locFile <- ""
 if (opt$build == "hg19"){
     locFile <- geneLocsFile19
+}else if (opt$build == "hg38"){
+    locFile <- geneLocsFile38
 }else{
-    stop("Build hg38 not available yet. Ask Andrew to extend genetobed.")
+    stop("Only hg19 and hg38 are available")
 }
+
 
 geneLocs <- GetGeneInterval(locFile, keepXtrans = FALSE, keepNR = FALSE)
 
