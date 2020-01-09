@@ -1,7 +1,7 @@
-library(dplyr)
-library(data.table)
-library(GenomicRanges)
-library(optparse)
+suppressPackageStartupMessages( library(dplyr) )
+suppressPackageStartupMessages( library(data.table) )
+suppressPackageStartupMessages( library(GenomicRanges) )
+suppressPackageStartupMessages( library(optparse) )
 
 getGenes <- function(file){
 
@@ -33,18 +33,19 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
         d <- d %>% filter(substring(name,1,2) != "NR")
         print(paste0("Removing ", nrmv, " transcripts starting with NR (non-coding genes)"))
     }
-    
+
     d <- d %>% select(name2, chrom, txStart, txEnd) %>%
-        mutate(strand = "+") %>% dplyr::rename(gene = name2) %>%
-        group_by(gene, chrom) %>% mutate(start = min(txStart, na.rm=T),
+         mutate(strand = "+") %>% dplyr::rename(gene = name2)
+    
+    ## ADJUST GENES WITH NON OVERLAPPING TRANSCRIPTS. IF A TRANSCRIPT OF A GENE OVERLAPS
+    ## WITH NO OTHER TRANSCRIPT OF THAT GENE, THEN PROVIDE IT A NEW NAME:
+    ## GENE_X, WHERE X IS AN INTEGER
+
+    d <- adjustGenes(d)
+    
+    d <- d %>% group_by(gene, chrom) %>% mutate(start = min(txStart, na.rm=T),
                                          end = max(txEnd, na.rm=T)) %>%
         filter(row_number() == 1) %>% ungroup() %>% select(-txStart, -txEnd)
-
-    ## 
-
-    rng <- makeGRangesFromDataFrame(d, keep.extra.columns = T, seqnames.field = "chrom",
-                                      start.field = "start", end.field = "end",
-                                   strand.field = "strand")
 
     ## write.table(rng, file = outFile, quote=F, row.names=F, col.names=T)
     ## print(paste0("Saving gene info to ",outFile))
@@ -73,4 +74,30 @@ gene2bed <- function(genes, geneLocs, prefix, outDir){
     write.table(file = geneIntFile, geneInts, quote=F, row.names=F, col.names=F, sep="\t")
     print(paste0("Wrote intervals for ", nrow(geneInts), " gene to ",geneIntFile))
 
+}
+
+adjustGenes <- function(data){
+
+    data$row <- 1:nrow(data)
+    
+    rng <- makeGRangesFromDataFrame(data, keep.extra.columns = TRUE, seqnames.field = "chrom",
+                                      start.field = "start", end.field = "end",
+                                    strand.field = "strand")
+
+    red <- reduce(rng)
+    ol <- findOverlaps(rng, red, type = "any")
+    ol <- as.data.frame(ol)
+
+    data <- left_join(data, ol, by=c("row" = "queryHits"))
+
+    data <- data %>% group_by(gene) %>%
+        mutate(gap = 1 * (n_distinct(subjectHits) > 1) ,
+               int = cumsum(duplicated(subjectHits)==FALSE) ) %>%
+        ungroup() %>% group_by(gene, subjectHits) %>%
+        mutate(geneExt = ifelse (gap == 0, gene, paste(gene,int,sep="_")))
+
+    data <- data %>% mutate(gene = geneExt) %>%
+        select(chrom, txStart, txEnd, strand, gene)
+
+    return(data)
 }

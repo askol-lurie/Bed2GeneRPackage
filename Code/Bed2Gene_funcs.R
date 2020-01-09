@@ -57,8 +57,9 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
         write.table(file = FileOut, geneLocBed, quote=F, row.names=F, col.names=TRUE, sep="\t")
     }
 
+  
     ## GET BED AND CONVERT TO GRANGE OBJECT
-    bed <- read.table(file = file, as.is=T, header=T)
+    bed <- read.table(file = file, as.is=T, header=F)
     names(bed)[1:3] <- c("chr","start","stop")
     bed$strand = "+"
     
@@ -202,7 +203,7 @@ makeFastGenePos_GeneLevel <- function(file, outFile, keepXtrans = FALSE, keepNR 
     }
     
     d <- d %>% select(name2, chrom, txStart, txEnd) %>%
-        mutate(strand = "+") %>% rename(gene = name2) %>%
+        mutate(strand = "+") %>% dplyr::rename(gene = name2) %>%
         group_by(gene, chrom) %>% mutate(start = min(txStart, na.rm=T),
                                          end = max(txEnd, na.rm=T)) %>%
         filter(row_number() == 1) %>% ungroup() %>% select(-txStart, -txEnd)
