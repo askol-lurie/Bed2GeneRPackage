@@ -23,8 +23,10 @@ source(paste0(SCRDIR,'/Gene2Bed_funcs.R'))
 
 ## GET GENE LOCATIONS ##
 ## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
-geneLocsFile19 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
-geneLocsFile38 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
+geneLocsFile19.1 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
+geneLocsFile19.2 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
+geneLocsFile38.1 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
+geneLocsFile38.2 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
 
 ############
 
@@ -101,15 +103,15 @@ outDir <- opt$out
 
 locFile <- ""
 if (opt$build == "hg19"){
-    locFile <- geneLocsFile19
+    locFiles <- c(geneLocsFile19.1, geneLocsFile19.2)
 }else if (opt$build == "hg38"){
-    locFile <- geneLocsFile38
+    locFiles <- c(geneLocsFile38.1 geneLocsFile38.2)
 }else{
     stop("Only hg19 and hg38 are available")
 }
 
 
-geneLocs <- GetGeneInterval(locFile, keepXtrans = FALSE, keepNR = FALSE)
+geneLocs <- GetGeneInterval(locFiles, keepXtrans = FALSE, keepNR = FALSE)
 
 gene2bed(genes, geneLocs, prefix, outDir)
 

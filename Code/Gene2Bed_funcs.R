@@ -18,6 +18,29 @@ getGenes <- function(file){
 }
 
 
+GetMergedGeneIntervals <- function(files, keepXtrans = FALSE, keepNR = FALSE){
+
+    d <- c()
+    ds <- list()
+    for (i in 1:length(files)){        
+        ds[[i]] <- GetGeneInterval(files[i], keepXtrans, keepNR)
+    }
+
+    for (i in 1:length(ds)){
+        
+        if (i == 1){
+            d <- ds[[i]]
+        }else{
+
+            dtmp <- ds[[i]]
+            dtmp <- dtmp %>% filter(dtmp$gene %in% d$gene == FALSE)
+            d <- rbind(d, dtmp)
+        }
+    }
+               
+    return(d)
+}
+
 GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
 
     ## KEEPXM: SHOULD POSITIONS INCLUDE TRANSCRIPT THAT START WITH XM (COMPUTATIONAL TRANSCRIPTS)
@@ -49,7 +72,7 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
 
     ## write.table(rng, file = outFile, quote=F, row.names=F, col.names=T)
     ## print(paste0("Saving gene info to ",outFile))
-    return(as.data.frame(rng))
+    return(as.data.frame(d))
 }
 
 
@@ -68,8 +91,9 @@ gene2bed <- function(genes, geneLocs, prefix, outDir){
 
     ## GET POSITION OF GENES IN GENE LIST
     geneInts <- geneLocs %>% filter(gene %in% genes) %>%
-        select(seqnames, start, end, gene) %>% arrange(seqnames, start) %>%
-        dplyr::rename(chr = seqnames)
+        mutate(gene = geneExt) %>% 
+        select(chrom, start, end, gene) %>% arrange(chrom, start) %>%
+        dplyr::rename(chr = chrom)
     
     write.table(file = geneIntFile, geneInts, quote=F, row.names=F, col.names=F, sep="\t")
     print(paste0("Wrote intervals for ", nrow(geneInts), " gene to ",geneIntFile))
@@ -96,8 +120,7 @@ adjustGenes <- function(data){
         ungroup() %>% group_by(gene, subjectHits) %>%
         mutate(geneExt = ifelse (gap == 0, gene, paste(gene,int,sep="_"))) %>% ungroup()
 
-    data <- data %>% mutate(gene = geneExt) %>%
-        select(chrom, txStart, txEnd, strand, gene)
+    data <- data  %>% select(chrom, txStart, txEnd, strand, gene, geneExt)
 
     return(data)
 }
