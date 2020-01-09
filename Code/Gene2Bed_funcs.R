@@ -94,7 +94,7 @@ adjustGenes <- function(data){
         mutate(gap = 1 * (n_distinct(subjectHits) > 1) ,
                int = cumsum(duplicated(subjectHits)==FALSE) ) %>%
         ungroup() %>% group_by(gene, subjectHits) %>%
-        mutate(geneExt = ifelse (gap == 0, gene, paste(gene,int,sep="_")))
+        mutate(geneExt = ifelse (gap == 0, gene, paste(gene,int,sep="_"))) %>% ungroup()
 
     data <- data %>% mutate(gene = geneExt) %>%
         select(chrom, txStart, txEnd, strand, gene)
