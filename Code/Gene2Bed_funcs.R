@@ -75,7 +75,21 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
     return(as.data.frame(d))
 }
 
+AddTrickyGenes <- function(locs, file, build){
 
+    tg <- read.table(file = file, as.is=T, header=T, sep="\t")
+    ind <- grep( paste0("gene|", build), names(tg))
+    tg <- tg[,ind]
+    names(tg) <- gsub(paste0(build,"_"), "", names(tg))
+    tg <- tg %>% mutate(strand = "+", geneExt = gene) %>% select(chrom, strand, gene, geneExt, start, end)
+    ind <- which(tg$gene %in% locs$gene == FALSE)
+    if (length(ind) > 0){
+        locs <- rbind(locs, tg[ind,])
+    }
+    print(paste0(length(ind), " tricky genes added to list of gene locations."), quote=FALSE)
+    return(locs)
+}
+    
 gene2bed <- function(genes, geneLocs, prefix, outDir){
 
     missFile <- paste0(outDir, "/",prefix,"_missingGenes.txt")
@@ -83,8 +97,8 @@ gene2bed <- function(genes, geneLocs, prefix, outDir){
     ## DETERMINE WHICH GENES ARE NOT IN REFSEQ
     GenesMissing <- genes[genes %in% geneLocs$gene == FALSE]
 
-    print(paste0(length(GenesMissing), " genes in gene list but not in RefSeq: "))
-    print(paste0("Print list of missing genes to ", missFile))
+    print(paste0(length(GenesMissing), " genes in gene list but not in RefSeq."))
+    print(paste0("Printing list of missing genes to ", missFile))
 
     ## LIST OF GENES IN MEDEX THAT ARE NOT IN REFSEQ
     write.table(file = missFile, GenesMissing, quote=F, row.names=F, col.names=F)

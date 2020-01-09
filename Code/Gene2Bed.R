@@ -6,7 +6,7 @@
 ## Author: Andrew Skol      ##
 ##                          ##
 ## Created: 01/02/20        ##
-## Updated: 01/02/20        ##
+## Updated: 01/09/20        ##
 ##                          ##
 ##############################
 ##
@@ -25,8 +25,14 @@ source(paste0(SCRDIR,'/Gene2Bed_funcs.R'))
 ## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
 geneLocsFile19.1 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
 geneLocsFile19.2 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
+geneLocsFile19.3 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_OtherUCSCRefSeq_GRCh37.gz")
 geneLocsFile38.1 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
 geneLocsFile38.2 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
+geneLocsFile38.3 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_OtherUCSCRefSeq_GRCh38.gz")
+
+
+## FILE WITH GENES NOT IN NCBI FILES ##
+trickyGenesFile <- paste0(dirname(SCRDIR), "/Resources/TrickGenesPositions.txt")
 
 ############
 
@@ -101,17 +107,19 @@ if (dir.exists(dirname(opt$out)) == FALSE){
 genes <- getGenes(opt$geneFile)
 outDir <- opt$out
 
-locFile <- ""
+locFiles <- c()
 if (opt$build == "hg19"){
-    locFiles <- c(geneLocsFile19.1, geneLocsFile19.2)
+    locFiles <- c(geneLocsFile19.1, geneLocsFile19.2, geneLocsFile19.3)
 }else if (opt$build == "hg38"){
-    locFiles <- c(geneLocsFile38.1 geneLocsFile38.2)
+    locFiles <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3)
 }else{
     stop("Only hg19 and hg38 are available")
 }
 
 
-geneLocs <- GetGeneInterval(locFiles, keepXtrans = FALSE, keepNR = FALSE)
+geneLocs <- GetMergedGeneIntervals(locFiles, keepXtrans = TRUE, keepNR = TRUE)
+
+geneLocs <- AddTrickyGenes(geneLocs, file = TrickyGenesFile, build=opt$build)
 
 gene2bed(genes, geneLocs, prefix, outDir)
 
