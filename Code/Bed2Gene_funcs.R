@@ -1,8 +1,10 @@
 
-library(optparse)
-library(GenomicRanges)
-library(dplyr)
-library(data.table)
+suppressPackageStartupMessages( library(optparse) ) 
+suppressPackageStartupMessages( library(GenomicRanges) )
+suppressPackageStartupMessages( library(dplyr) )
+suppressPackageStartupMessages( library(data.table) )
+
+
 
 getGenes <- function(geneFiles){
 
@@ -49,7 +51,7 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
         geneLocs <- geneLocs[which(geneLocs$gene %in% genes)]
 
         ## WRITE OUT A BED FILE BASED ON THE EXONIC INTERVALS
-        geneLocBed <- as.data.frame(geneLocs)
+        geneLocBed <- geneLocs
         names(geneLocBed) <- c("chr","start","stop","width","strand","gene","tran")
         geneLocBed <- geneLocBed %>% group_by(chr, start, stop, gene) %>%
             filter(row_number() == 1) %>% select(chr, start, stop, strand, gene)
@@ -153,8 +155,9 @@ makeFastGenePos <- function(file, outFile, keepXtrans = FALSE, keepNR = FALSE){
     rng <- makeGRangesFromDataFrame(de, keep.extra.columns = T, seqnames.field = "chr",
                                     start.field = "start", end.field = "end",
                                     strand.field = "strand")
-    saveRDS(rng, file = outFile)
-    print(paste0("Saving gene info to ",outFile))
+    ##saveRDS(rng, file = outFile)
+    ##print(paste0("Saving gene info to ",outFile))
+    return(rng)
 }
 
 exonify <- function(data){
@@ -219,19 +222,39 @@ makeFastGenePos_GeneLevel <- function(file, outFile, keepXtrans = FALSE, keepNR 
     return(rng)
 }
 
-if (0){
-
-    ## This is how the gene position file was made ##
+makeExonLocFile <- function(files, ResourceDir, Prefix = "GeneExons", build){
     
-    ## RESOURCE FILES ##
-    ## ResourceDir <- "/home/askol/Projects/Bed2Gene/Resources/"
+    ## This is how the gene position file was made ##
+
+    Exons <- c()
+    for (i in 1:length(files)){
+
+        file <- files[i]
+        print(paste0("Processing file ",file), quote=F)
+        
+        tmp <- makeFastGenePos(file, keepXtrans = TRUE, keepNR = TRUE)
+        tmp <- as.data.frame(tmp)
+
+        if (i != 1){
+            ind <- which(tmp$gene %in% Exons$gene == FALSE)
+            tmp <- tmp[ind,]
+        }
+
+        Exons <- rbind(Exons, tmp)
+    }
+    
+    outFile <- paste0(ResourceDir, Prefix,"_",build,".rds")
+    saveRDS(file = outFile, Exons)
+
+    print(paste0("Created exon resource files ",outFile), quote=FALSE)    
+    
     ## UCSCGene37fast <- paste0(ResourceDir,"GeneStartEnd37.rds")
-    UCSCGene37fast <- paste0(ResourceDir,"GeneExons37.rds")
-    UCSCGeneFile37 <- paste0(ResourceDir,"Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
+    ## UCSCGene37fast <- paste0(ResourceDir,"GeneExons37.rds")
+    ## UCSCGeneFile37 <- paste0(ResourceDir,"Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
 
-    Gene37 <- makeFastGenePos(UCSCGeneFile37, UCSCGene37fast, keepXtrans = FALSE)
+    ## Gene37 <- makeFastGenePos(UCSCGeneFile37, UCSCGene37fast, keepXtrans = TRUE, keepNR = TRUE)
 
-    UCSCGene37fastGenes <- paste0(ResourceDir,"Genes37.rds")
-    Gene37_GeneLevel <- makeFastGenePos_GeneLevel(UCSCGeneFile37, UCSCGene37fastGenes,
-                                                  keepXtrans = FALSE, keepNR = FALSE)
+    ## UCSCGene37fastGenes <- paste0(ResourceDir,"Genes37.rds")
+    ## Gene37_GeneLevel <- makeFastGenePos_GeneLevel(UCSCGeneFile37, UCSCGene37fastGenes,
+    ##                                               keepXtrans = FALSE, keepNR = FALSE)
 }

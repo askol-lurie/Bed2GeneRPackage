@@ -16,17 +16,30 @@ initial.options <- commandArgs(trailingOnly = FALSE)
 file.arg.name <- "--file="
 script.name <- sub(file.arg.name, "", initial.options[grep(file.arg.name, initial.options)])
 SCRDIR <- dirname(script.name)
+ResourceDir <- paste0(dirname(SCRDIR),"/Resources/")
 
 ## LOAD FUNCTIONS ##
 source(paste0(SCRDIR,'/Bed2Gene_funcs.R'))
 ##############
 
+## GET GENE LOCATIONS USED TO CREATE EXON LOCATION FILES ##
+geneLocsFile19.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
+geneLocsFile19.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
+geneLocsFile19.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh37.gz")
+geneLocsFile38.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
+geneLocsFile38.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
+geneLocsFile38.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh38.gz")
+
+geneLocsFiles19 <- c(geneLocsFile19.1, geneLocsFile19.2, geneLocsFile19.3)
+geneLocsFiles38 <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3)
+
 ## GET GENE LOCATIONS ##
 ## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
-geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneExons37.rds")
+exonLocsFile.19 <- paste0(ResourceDir, "GeneExons_hg19.rds")
+exonLocsFile.38  <- paste0(ResourceDir, "GeneExons_hg38.rds")
 
-geneLocs <- readRDS(geneLocsFile)
-geneLocs$gene <- as.character(geneLocs$gene)
+exonLocs <- readRDS(exonLocsFile)
+exonLocs$gene <- as.character(exonLocs$gene)
 
 ############
 
@@ -40,6 +53,8 @@ option_list = list(
   make_option(c("-g", "--geneFiles"), type="character", default=NULL,
               help="List of genes to assign bed intervals to (optional)",
               metavar="character"),
+  make_option(c("-G", "--genome", type="character", default=NULL, 
+              help="Reference Genome Build: hg19 or hg38", metavar = "character"),
   make_option(c("-o", "--out"), type="character", default=NULL, 
               help="Output directory", metavar="character"),
   make_option(c("-p", "--prefix"), type="character", default=NULL, 
@@ -82,6 +97,14 @@ if (!is.null(opt$geneFiles)){
     print("No gene file provided. Examining all possible genes intervals may fall on.")
     ## stop("Must specify one or more gene files.", call.=FALSE)
 }
+## ENSURE GENOME BUILD IS SPECIFIED
+if (!is.null(opt$genomeBuild)){
+    if (opt$genomeBuild %in% c("hg19","hg38") == F){
+        stop("Genome build must be either hg19 or hg38")
+    }
+}else{
+    stop("A genome build must be supplied (hg19 or hg38)")
+}
 ## ENSURE RUN DIRECTORY EXISTS 
 if (!is.null(opt$PatDir)){
     if (!dir.exists(opt$bedDir)){
@@ -102,6 +125,12 @@ if (dir.exists(dirname(opt$out)) == FALSE){
 ## END OPTION HANDLING ##
 ## ################### ##
 
+if (0){
+    geneLocsFiles <- geneLocsFiles38
+    if (opt$genomeBuild == "hg19"){ geneLocsFiles <- geneLocsFiles37}
+    makeExonLocFile(files=geneLocsFiles, ResourceDir, Prefix = "GeneExons", build = opt$genomeBuild)
+}
+
 ## GET BED DATA ##
 bedFiles <- geneFiles <- c()
 if (!is.null(opt$bedFile)){
@@ -118,7 +147,7 @@ outDir <- opt$out
 
 for (file in bedFiles){
     
-    bed2gene(file, genes, geneLocs, prefix, outDir)
+    bed2gene(file, genes, exonLocs, prefix, outDir)
 
 }
              

@@ -32,7 +32,7 @@ geneLocsFile38.3 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_O
 
 
 ## FILE WITH GENES NOT IN NCBI FILES ##
-trickyGenesFile <- paste0(dirname(SCRDIR), "/Resources/TrickGenesPositions.txt")
+trickyGenesFile <- paste0(dirname(SCRDIR), "/Resources/TrickyGenesPositions.txt")
 
 ############
 
@@ -119,8 +119,9 @@ if (opt$build == "hg19"){
 
 geneLocs <- GetMergedGeneIntervals(locFiles, keepXtrans = TRUE, keepNR = TRUE)
 
-geneLocs <- AddTrickyGenes(geneLocs, file = TrickyGenesFile, build=opt$build)
+geneLocs <- AddTrickyGenes(geneLocs, file = trickyGenesFile, build=opt$build)
 
+prefix <- paste0(prefix,"_",opt$build)
 gene2bed(genes, geneLocs, prefix, outDir)
 
 
