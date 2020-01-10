@@ -68,6 +68,9 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
     bed <- makeGRangesFromDataFrame(bed, keep.extra.columns=TRUE, seqnames.field = "chr", 
                                     start.field = "start", end.field = "stop",
                                     strand.field = "strand")
+    geneLocs <- makeGRangesFromDataFrame(geneLocs, keep.extra.columns=TRUE, seqnames.field = "seqnames", 
+                                    start.field = "start", end.field = "end",
+                                    strand.field = "strand")
     
     ## FIND THE GENE(S) THAT AN INTERVAL OVERLAPS WITH
     ol <- as.data.frame(findOverlaps(bed,geneLocs, type="any", ignore.strand=TRUE ))

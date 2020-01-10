@@ -92,6 +92,10 @@ AddTrickyGenes <- function(locs, file, build){
     
 gene2bed <- function(genes, geneLocs, prefix, outDir){
 
+    ## REMOVE ALTERNATIVE LOCI FROM GENELOCS 
+    ind <- grep("_", geneLocs$chrom)
+    geneLocs <- geneLocs[-ind,]
+    
     missFile <- paste0(outDir, "/",prefix,"_missingGenes.txt")
     geneIntFile <- paste0(outDir, "/", prefix, ".bed") 
     ## DETERMINE WHICH GENES ARE NOT IN REFSEQ

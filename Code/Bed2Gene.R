@@ -38,8 +38,7 @@ geneLocsFiles38 <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3)
 exonLocsFile.19 <- paste0(ResourceDir, "GeneExons_hg19.rds")
 exonLocsFile.38  <- paste0(ResourceDir, "GeneExons_hg38.rds")
 
-exonLocs <- readRDS(exonLocsFile)
-exonLocs$gene <- as.character(exonLocs$gene)
+
 
 ############
 
@@ -53,7 +52,7 @@ option_list = list(
   make_option(c("-g", "--geneFiles"), type="character", default=NULL,
               help="List of genes to assign bed intervals to (optional)",
               metavar="character"),
-  make_option(c("-G", "--genome", type="character", default=NULL, 
+  make_option(c("-G", "--genome"), type="character", default=NULL, 
               help="Reference Genome Build: hg19 or hg38", metavar = "character"),
   make_option(c("-o", "--out"), type="character", default=NULL, 
               help="Output directory", metavar="character"),
@@ -98,8 +97,8 @@ if (!is.null(opt$geneFiles)){
     ## stop("Must specify one or more gene files.", call.=FALSE)
 }
 ## ENSURE GENOME BUILD IS SPECIFIED
-if (!is.null(opt$genomeBuild)){
-    if (opt$genomeBuild %in% c("hg19","hg38") == F){
+if (!is.null(opt$genome)){
+    if (opt$genome %in% c("hg19","hg38") == F){
         stop("Genome build must be either hg19 or hg38")
     }
 }else{
@@ -127,9 +126,16 @@ if (dir.exists(dirname(opt$out)) == FALSE){
 
 if (0){
     geneLocsFiles <- geneLocsFiles38
-    if (opt$genomeBuild == "hg19"){ geneLocsFiles <- geneLocsFiles37}
-    makeExonLocFile(files=geneLocsFiles, ResourceDir, Prefix = "GeneExons", build = opt$genomeBuild)
+    if (opt$genome == "hg19"){ geneLocsFiles <- geneLocsFiles37}
+    makeExonLocFile(files=geneLocsFiles, ResourceDir, Prefix = "GeneExons", build = opt$genome)
 }
+
+exonLocsFile <- exonLocsFile.38
+if (opt$genome == "hg19"){
+    exonLocsFile <- exonLocsFile.19
+}
+exonLocs <- readRDS(exonLocsFile)
+exonLocs$gene <- as.character(exonLocs$gene)
 
 ## GET BED DATA ##
 bedFiles <- geneFiles <- c()
