@@ -6,7 +6,7 @@
 ## Author: Andrew Skol      ##
 ##                          ##
 ## Created: 01/02/20        ##
-## Updated: 01/09/20        ##
+## Updated: 01/13/20        ##
 ##                          ##
 ##############################
 ##
@@ -16,20 +16,32 @@ initial.options <- commandArgs(trailingOnly = FALSE)
 file.arg.name <- "--file="
 script.name <- sub(file.arg.name, "", initial.options[grep(file.arg.name, initial.options)])
 SCRDIR <- dirname(script.name)
+ResourceDir <- paste0(dirname(SCRDIR),"/Resources/")
 
 ## LOAD FUNCTIONS ##
 source(paste0(SCRDIR,'/Gene2Bed_funcs.R'))
 ##############
 
-## GET GENE LOCATIONS ##
+## GET GENE LOCATIONS USED TO CREATE RESOURCE LOCATION FILE ##
 ## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
-geneLocsFile19.1 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
-geneLocsFile19.2 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
-geneLocsFile19.3 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_OtherUCSCRefSeq_GRCh37.gz")
-geneLocsFile38.1 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
-geneLocsFile38.2 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
-geneLocsFile38.3 <- paste0(dirname(SCRDIR), "/Resources/Genes_GenesPredictions_OtherUCSCRefSeq_GRCh38.gz")
+geneLocsFile19.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
+geneLocsFile19.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
+geneLocsFile19.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh37.gz")
+geneLocsFile19.4 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31lift37_Comprehensive_GRCh37.gz")
+geneLocsFile19.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psuedogenes_GRCh37.gz")
+                           
+geneLocsFile38.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
+geneLocsFile38.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
+geneLocsFile38.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh38.gz")
+geneLocsFile38.4 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_Comprehensive_GRCh38.gz")
+geneLocsFile38.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psuedogenes_GRCh38.gz")
 
+geneLocsFiles19 <- c(geneLocsFile19.1, geneLocsFile19.2, geneLocsFile19.3, geneLocsFile19.4, geneLocsFile19.5)
+geneLocsFiles38 <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3, geneLocsFile38.4, geneLocsFile38.5)
+
+## STORED GENE LOCATION FILE FOR FAST LOADING ##
+geneLocFile19 <- paste0(ResourceDir,"GeneLocs_hg19.rds")
+geneLocFile38 <- paste0(ResourceDir,"GeneLocs_hg38.rds")
 
 ## FILE WITH GENES NOT IN NCBI FILES ##
 trickyGenesFile <- paste0(dirname(SCRDIR), "/Resources/TrickyGenesPositions.txt")
@@ -102,24 +114,35 @@ if (dir.exists(dirname(opt$out)) == FALSE){
 ## END OPTION HANDLING ##
 ## ################### ##
 
-## GET BED DATA ##
 
+
+###################
+## ONLY NEEDS TO BE RUN IF RECREATING GENE LOCATION FILES
+###################
+if (0){
+    geneLocsFiles <- geneLocsFiles38
+    if (opt$build == "hg19"){ geneLocsFiles <- geneLocsFiles19}
+    makeGeneLocFile(files=geneLocsFiles, ResourceDir, Prefix = "GeneLocs", build = opt$build,
+                    keepXtrans = FALSE, keepNR = TRUE)
+}
+
+if (0){
+     geneLocsFiles <- geneLocsFiles38
+    if (opt$build == "hg19"){ geneLocsFiles <- geneLocsFiles19}
+    makeCodingLocFile(files=geneLocsFiles, ResourceDir, Prefix = "CodingLocs", build = opt$build,
+                    keepXtrans = FALSE, keepNR = TRUE)
+}
+## GET BED DATA ##
 genes <- getGenes(opt$geneFile)
 outDir <- opt$out
 
-locFiles <- c()
+## GET STORED GENE LOCATION INFORMATION
+geneLocFile <- geneLocFile38
 if (opt$build == "hg19"){
-    locFiles <- c(geneLocsFile19.1, geneLocsFile19.2, geneLocsFile19.3)
-}else if (opt$build == "hg38"){
-    locFiles <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3)
-}else{
-    stop("Only hg19 and hg38 are available")
+    geneLocFile <- geneLocFile19
 }
-
-
-geneLocs <- GetMergedGeneIntervals(locFiles, keepXtrans = TRUE, keepNR = TRUE)
-
-geneLocs <- AddTrickyGenes(geneLocs, file = trickyGenesFile, build=opt$build)
+geneLocs <- readRDS(geneLocFile)
+geneLocs$gene <- as.character(geneLocs$gene)
 
 prefix <- paste0(prefix,"_",opt$build)
 gene2bed(genes, geneLocs, prefix, outDir)

@@ -240,10 +240,11 @@ makeExonLocFile <- function(files, ResourceDir, Prefix = "GeneExons", build){
 
         if (i != 1){
             ind <- which(tmp$gene %in% Exons$gene == FALSE)
-            tmp <- tmp[ind,]
+            if (length(ind) > 0){
+                tmp <- tmp[ind,]            
+                Exons <- rbind(Exons, tmp)
+            }
         }
-
-        Exons <- rbind(Exons, tmp)
     }
     
     outFile <- paste0(ResourceDir, Prefix,"_",build,".rds")

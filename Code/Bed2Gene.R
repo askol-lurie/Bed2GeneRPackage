@@ -26,12 +26,17 @@ source(paste0(SCRDIR,'/Bed2Gene_funcs.R'))
 geneLocsFile19.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
 geneLocsFile19.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
 geneLocsFile19.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh37.gz")
+geneLocsFile19.4 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31lift37_Comprehensive_GRCh37.gz")
+geneLocsFile19.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psuedogenes_GRCh37.gz")
+                           
 geneLocsFile38.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
 geneLocsFile38.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
 geneLocsFile38.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh38.gz")
+geneLocsFile38.4 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_Comprehensive_GRCh38.gz")
+geneLocsFile38.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psuedogenes_GRCh38.gz")
 
-geneLocsFiles19 <- c(geneLocsFile19.1, geneLocsFile19.2, geneLocsFile19.3)
-geneLocsFiles38 <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3)
+geneLocsFiles19 <- c(geneLocsFile19.1, geneLocsFile19.2, geneLocsFile19.3, geneLocsFile19.4, geneLocsFile19.5)
+geneLocsFiles38 <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3, geneLocsFile38.4, geneLocsFile38.5)
 
 ## GET GENE LOCATIONS ##
 ## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
@@ -126,7 +131,7 @@ if (dir.exists(dirname(opt$out)) == FALSE){
 
 if (0){
     geneLocsFiles <- geneLocsFiles38
-    if (opt$genome == "hg19"){ geneLocsFiles <- geneLocsFiles37}
+    if (opt$genome == "hg19"){ geneLocsFiles <- geneLocsFiles19}
     makeExonLocFile(files=geneLocsFiles, ResourceDir, Prefix = "GeneExons", build = opt$genome)
 }
 

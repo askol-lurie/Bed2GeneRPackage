@@ -47,6 +47,7 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
 
     ## SETTING START AND END TO BE THE MINIMUM AND MAXIMUM POS OBSERVED ##
     ## FOR A GENE
+    print(paste0("Processing file ",file), quote=FALSE)
     d <- fread(file, header=T)
     if (keepXtrans == FALSE){
         d <- d %>% filter(substring(name,1,1) != "X")
@@ -57,8 +58,7 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
         print(paste0("Removing ", nrmv, " transcripts starting with NR (non-coding genes)"))
     }
 
-    d <- d %>% select(name2, chrom, txStart, txEnd) %>%
-         mutate(strand = "+") %>% dplyr::rename(gene = name2)
+    d <- d %>% select(name2, chrom, txStart, txEnd, strand)  %>% dplyr::rename(gene = name2)
     
     ## ADJUST GENES WITH NON OVERLAPPING TRANSCRIPTS. IF A TRANSCRIPT OF A GENE OVERLAPS
     ## WITH NO OTHER TRANSCRIPT OF THAT GENE, THEN PROVIDE IT A NEW NAME:
@@ -75,30 +75,134 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
     return(as.data.frame(d))
 }
 
-AddTrickyGenes <- function(locs, file, build){
+GetCodingIntervals <- function(files, keepXtrans = FALSE, keepNR = FALSE){
 
-    tg <- read.table(file = file, as.is=T, header=T, sep="\t")
-    ind <- grep( paste0("gene|", build), names(tg))
-    tg <- tg[,ind]
-    names(tg) <- gsub(paste0(build,"_"), "", names(tg))
-    tg <- tg %>% mutate(strand = "+", geneExt = gene) %>% select(chrom, strand, gene, geneExt, start, end)
-    ind <- which(tg$gene %in% locs$gene == FALSE)
-    if (length(ind) > 0){
-        locs <- rbind(locs, tg[ind,])
+    d <- c()
+    ds <- list()
+    for (i in 1:length(files)){        
+        ds[[i]] <- GetCodingInterval(files[i], keepXtrans, keepNR)
     }
-    print(paste0(length(ind), " tricky genes added to list of gene locations."), quote=FALSE)
-    return(locs)
+
+    for (i in 1:length(ds)){
+        
+        if (i == 1){
+            d <- ds[[i]]
+        }else{
+
+            dtmp <- ds[[i]]
+            ## assuming that files are ordered by importance.
+            ## if a gene is in a previous file, don't include additional coding intervals
+            ## from current file
+            dtmp <- dtmp %>% filter(dtmp$gene %in% d$gene == FALSE)
+            d <- rbind(d, dtmp)
+        }
+    }
+
+    ## merge intervals
+    d <- reduce(d)
+    
+    return(d)
 }
+
+GetCodingInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
+
+    ## KEEPXM: SHOULD POSITIONS INCLUDE TRANSCRIPT THAT START WITH XM (COMPUTATIONAL TRANSCRIPTS)
+    
+    ## SETTING START AND END TO BE THE MINIMUM AND MAXIMUM POS OBSERVED ##
+    ## FOR A GENE
+    d <- fread(file, header=T)
+    if (keepXtrans == FALSE){
+        nrmv <- sum(substring(d$name,1,1) == "X")
+        d <- d %>% filter(substring(name,1,1) != "X")
+        print(paste0("Removing ", nrmv, " transcripts starting with X (predicted genes)"))
+        
+    }
+    if (keepNR == FALSE){
+        nrmv <- sum(substring(d$name, 1, 2) == "NR")
+        d <- d %>% filter(substring(name,1,2) != "NR")
+        print(paste0("Removing ", nrmv, " transcripts starting with NR (non-coding genes)"))
+    }
+
+    ## change d so that each row is an exon
+    de <- codeify(d)
+    
+    rng <- makeGRangesFromDataFrame(de, keep.extra.columns = T, seqnames.field = "chr",
+                                    start.field = "start", end.field = "end",
+                                    strand.field = "strand")
+
+    return(rng)
+}
+
+
+codeify <- function(data){
+
+    de <- list()
+    for (i in 1:nrow(data)){
+        if (i%%5000 == 0){
+            print(paste0("Working on transcript ",i, " of ",nrow(data)))
+        }
+        tran = data$name[i]
+        gene = data$name2[i]
+        strand = data$strand[i]
+        chrom = data$chrom[i]
+        cdsStart = data$cdsStart[i]
+        cdsEnd = data$cdsEnd[i]
+        exonFrames <- strsplit(data$exonFrames[i], split=",")[[1]]
+        tmp <- cbind(strsplit(data$exonStarts[i], split=",")[[1]],
+                     strsplit(data$exonEnds[i], split=",")[[1]])
+
+        ## remove exons that are UTRs only ##
+        rmInd <- which(exonFrames == -1)
+        ## if there is no coding region don't do anything
+        if (length(rmInd) != length(exonFrames)){
+            ## if there are exons that are all UTR, remove them ##
+            if (length(rmInd) > 0){
+                tmp <- tmp[-rmInd,]
+            }
+            ## if only one coding region remains
+            if (length(tmp) == 2){
+                tmp <- matrix(c(cdsStart, cdsEnd), 1, 2)
+            }else{
+                tmp[1,1] <- cdsStart
+                tmp[nrow(tmp),2] <- cdsEnd
+            }
+                       
+            de[[i]] <- cbind(chrom, tmp, gene, strand, tran)
+        }
+    }
+    
+    de <- do.call(rbind, de)
+    colnames(de) <- c("chr","start","end","gene","strand","tran")
+    de <- as.data.frame(de, string.as.factors = FALSE)    
+    
+    ## keep distinct intervals (means will delete transcript names) ##
+    print("Removing duplicate intervals (as a result of mult transcripts per gene)")
+    de <- de %>% group_by(chr,start,end,gene) %>% filter(row_number() == 1) %>% ungroup()
+    
+    return(de)
+}
+      
     
 gene2bed <- function(genes, geneLocs, prefix, outDir){
 
     ## REMOVE ALTERNATIVE LOCI FROM GENELOCS 
     ind <- grep("_", geneLocs$chrom)
+    genesRm <- unique(geneLocs$gene[ind])
     geneLocs <- geneLocs[-ind,]
-    
+
+    ## REPORT IF ANY GENES ARE REMOVED THAT ARE ONLY ON ALTERNATIVE LOCI
+    ind <- which( (genes %in% genesRm) & (genes %in% geneLocs$gene == FALSE) )
+
+    if (length(ind) > 0){
+        altLocFile <- paste0(outDir, "/", prefix,"_altLocGenes.txt")
+        print(paste0(length(ind), " genes are on alternative loci only."))
+        write.table(file = altLocFile, genes[ind], quote=F, row.names=F, col.names=F)
+    }
+
+    ## DETERMINE WHICH GENES ARE NOT IN REFSEQ
     missFile <- paste0(outDir, "/",prefix,"_missingGenes.txt")
     geneIntFile <- paste0(outDir, "/", prefix, ".bed") 
-    ## DETERMINE WHICH GENES ARE NOT IN REFSEQ
+
     GenesMissing <- genes[genes %in% geneLocs$gene == FALSE]
 
     print(paste0(length(GenesMissing), " genes in gene list but not in RefSeq."))
@@ -141,4 +245,24 @@ adjustGenes <- function(data){
     data <- data  %>% select(chrom, txStart, txEnd, strand, gene, geneExt)
 
     return(data)
+}
+
+
+makeGeneLocFile <- function(files, ResourceDir, Prefix, build, keepXtrans = TRUE, keepNR = TRUE){
+
+    outFile <- paste0(ResourceDir,Prefix,"_",build,".rds")
+    geneLocs <- GetMergedGeneIntervals(files, keepXtrans, keepNR)
+    saveRDS(file = outFile, geneLocs)
+
+    print(paste("Wrote gene location file to ",outFile))
+}
+
+
+makeCodingLocFile <- function(files, ResourceDir, Prefix, build, keepXtrans = FALSE, keepNR = TRUE){
+
+    outFile <- paste0(ResourceDir,Prefix,"_",build,".rds")
+    geneLocs <- GetCodingIntervals(files, keepXtrans, keepNR)
+    saveRDS(file = outFile, geneLocs)
+
+    print(paste("Wrote gene location file to ",outFile))
 }
