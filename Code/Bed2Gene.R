@@ -132,7 +132,8 @@ if (dir.exists(dirname(opt$out)) == FALSE){
 if (0){
     geneLocsFiles <- geneLocsFiles38
     if (opt$genome == "hg19"){ geneLocsFiles <- geneLocsFiles19}
-    makeExonLocFile(files=geneLocsFiles, ResourceDir, Prefix = "GeneExons", build = opt$genome)
+    makeExonLocFile(files=geneLocsFiles, ResourceDir, Prefix = "GeneExons", build = opt$genome,
+                    keepXtrans = FALSE, keepNR = TRUE)
 }
 
 exonLocsFile <- exonLocsFile.38

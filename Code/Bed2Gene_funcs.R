@@ -225,7 +225,7 @@ makeFastGenePos_GeneLevel <- function(file, outFile, keepXtrans = FALSE, keepNR 
     return(rng)
 }
 
-makeExonLocFile <- function(files, ResourceDir, Prefix = "GeneExons", build){
+makeExonLocFile <- function(files, ResourceDir, Prefix = "GeneExons", build, keepXtrans = TRUE, keepNR = TRUE){
     
     ## This is how the gene position file was made ##
 
@@ -235,7 +235,7 @@ makeExonLocFile <- function(files, ResourceDir, Prefix = "GeneExons", build){
         file <- files[i]
         print(paste0("Processing file ",file), quote=F)
         
-        tmp <- makeFastGenePos(file, keepXtrans = TRUE, keepNR = TRUE)
+        tmp <- makeFastGenePos(file, keepXtrans = FALSE, keepNR = TRUE)
         tmp <- as.data.frame(tmp)
 
         if (i != 1){

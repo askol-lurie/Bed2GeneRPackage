@@ -66,7 +66,7 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
 
     d <- adjustGenes(d)
     
-    d <- d %>% group_by(gene, chrom) %>% mutate(start = min(txStart, na.rm=T),
+    d <- d %>% group_by(geneExt, chrom) %>% mutate(start = min(txStart, na.rm=T),
                                          end = max(txEnd, na.rm=T)) %>%
         filter(row_number() == 1) %>% ungroup() %>% select(-txStart, -txEnd)
 
@@ -187,7 +187,7 @@ gene2bed <- function(genes, geneLocs, prefix, outDir){
 
     ## REMOVE ALTERNATIVE LOCI FROM GENELOCS 
     ind <- grep("_", geneLocs$chrom)
-    genesRm <- unique(geneLocs$gene[ind])
+    genesRm <- unique(geneLocs$geneExt[ind])
     geneLocs <- geneLocs[-ind,]
 
     ## REPORT IF ANY GENES ARE REMOVED THAT ARE ONLY ON ALTERNATIVE LOCI
@@ -248,7 +248,7 @@ adjustGenes <- function(data){
 }
 
 
-makeGeneLocFile <- function(files, ResourceDir, Prefix, build, keepXtrans = TRUE, keepNR = TRUE){
+makeGeneLocFile <- function(files, ResourceDir, Prefix, build, keepXtrans = FALSE, keepNR = TRUE){
 
     outFile <- paste0(ResourceDir,Prefix,"_",build,".rds")
     geneLocs <- GetMergedGeneIntervals(files, keepXtrans, keepNR)
