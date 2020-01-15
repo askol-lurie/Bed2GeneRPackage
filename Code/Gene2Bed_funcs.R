@@ -248,10 +248,22 @@ adjustGenes <- function(data){
 }
 
 
-makeGeneLocFile <- function(files, ResourceDir, Prefix, build, keepXtrans = FALSE, keepNR = TRUE){
+makeGeneLocFile <- function(files, mitoFile = "", ResourceDir, Prefix,
+                            build, keepXtrans = FALSE, keepNR = TRUE){
 
     outFile <- paste0(ResourceDir,Prefix,"_",build,".rds")
     geneLocs <- GetMergedGeneIntervals(files, keepXtrans, keepNR)
+
+      if (mitoFile != ""){
+        print(paste0("Adding mitochondrial genes from ",mitoFile))
+        mito <- read.table(file = mitoFile, as.is=T, header=FALSE)
+        names(mito) <- c("chrom", "start","end","gene")
+        mito$strand <- "+"
+        mito$geneExt <- mito$gene
+        mito <- mito %>% select(chrom, strand, gene, geneExt, start, end)
+        geneLocs <- rbind(geneLocs, mito)
+      }
+    
     saveRDS(file = outFile, geneLocs)
 
     print(paste("Wrote gene location file to ",outFile))

@@ -225,7 +225,8 @@ makeFastGenePos_GeneLevel <- function(file, outFile, keepXtrans = FALSE, keepNR 
     return(rng)
 }
 
-makeExonLocFile <- function(files, ResourceDir, Prefix = "GeneExons", build, keepXtrans = TRUE, keepNR = TRUE){
+makeExonLocFile <- function(files, ResourceDir, mitoFile = "", Prefix = "GeneExons",
+                            build, keepXtrans = TRUE, keepNR = TRUE){
     
     ## This is how the gene position file was made ##
 
@@ -246,19 +247,20 @@ makeExonLocFile <- function(files, ResourceDir, Prefix = "GeneExons", build, kee
             }
         }
     }
-    
+
+    if (mitoFile != ""){
+        print(paste0("Adding mitochondrial genes from ",mitoFile))
+        mito <- read.table(file = mitoFile, as.is=T, header=FALSE)
+        names(mito) <- c("seqnames", "start","end","gene")
+        mito$strand <- "+"
+        mito$tran <- mito$gene
+        mito$width <- mito$end - mito$start
+        mito <- mito %>% select(seqnames, start, end, width, strand, gene, tran)
+        Exons <- rbind(Exons, mito)
+    }
+        
     outFile <- paste0(ResourceDir, Prefix,"_",build,".rds")
     saveRDS(file = outFile, Exons)
 
     print(paste0("Created exon resource files ",outFile), quote=FALSE)    
-    
-    ## UCSCGene37fast <- paste0(ResourceDir,"GeneStartEnd37.rds")
-    ## UCSCGene37fast <- paste0(ResourceDir,"GeneExons37.rds")
-    ## UCSCGeneFile37 <- paste0(ResourceDir,"Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
-
-    ## Gene37 <- makeFastGenePos(UCSCGeneFile37, UCSCGene37fast, keepXtrans = TRUE, keepNR = TRUE)
-
-    ## UCSCGene37fastGenes <- paste0(ResourceDir,"Genes37.rds")
-    ## Gene37_GeneLevel <- makeFastGenePos_GeneLevel(UCSCGeneFile37, UCSCGene37fastGenes,
-    ##                                               keepXtrans = FALSE, keepNR = FALSE)
 }

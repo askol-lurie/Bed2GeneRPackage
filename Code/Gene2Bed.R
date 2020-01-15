@@ -39,6 +39,9 @@ geneLocsFile38.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psued
 geneLocsFiles19 <- c(geneLocsFile19.1, geneLocsFile19.2, geneLocsFile19.3, geneLocsFile19.4, geneLocsFile19.5)
 geneLocsFiles38 <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3, geneLocsFile38.4, geneLocsFile38.5)
 
+## copied from /home/win.ngs/NGS/medex_illumina/Bed_files
+mitoFile <- paste0(ResourceDir, "Mitochondrial_genes.bed")
+
 ## STORED GENE LOCATION FILE FOR FAST LOADING ##
 geneLocFile19 <- paste0(ResourceDir,"GeneLocs_hg19.rds")
 geneLocFile38 <- paste0(ResourceDir,"GeneLocs_hg38.rds")
