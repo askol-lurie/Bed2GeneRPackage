@@ -170,19 +170,34 @@ exonify <- function(data){
         if (i%%5000 == 0){
             print(paste0("Working on transcript ",i, " of ",nrow(data)))
         }
-        tran = data$name[i]
-        gene = data$name2[i]
-        strand = data$strand[i]
-        chrom = data$chrom[i]
-        tmp <- cbind(strsplit(data$exonStarts[i], split=",")[[1]],
+        tran <- data$name[i]
+        gene <- data$name2[i]
+        strand <-  data$strand[i]
+        chrom <- data$chrom[i]
+        cdStart <- data$cdsStart
+        cdEnd <- data$cdsEnd
+        exonPos <- cbind(strsplit(data$exonStarts[i], split=",")[[1]],
                      strsplit(data$exonEnds[i], split=",")[[1]])
-        de[[i]] <- cbind(chrom, tmp, gene, strand, tran)
+        frames <- strsplit(data$exonFrames[i], split=",")[[1]]
+        exonNo <- 1:data$exonCount
+        if (strand == "-"){exonNo <- rev(exonNo)}
+        cdPos <- exonPos
+        cdInd <- which(frames != -1)
+        if (length(utr) < data$exonCount){
+            cdPos[utr,] <- NA
+        }
+        cdStartInd <- min(cdInd)
+        cdEndInd <- max(cdInd)
+        cdPos[cdStartInd] <- data$cdsStart
+        cdPos[cdEndInd] <- data$cdsEnd
+            
+        de[[i]] <- cbind(chrom, exonPos, cdPos, exonNo, gene, strand, tran)
     }
     
     de <- do.call(rbind, de)
 
     de <- as.data.frame(de, string.as.factors = FALSE)    
-    names(de) <- c("chr","start","end","gene","strand","tran")
+    names(de) <- c("chr","start","end","startCd","endCd", "exon", "gene","strand","tran")
 
     ## keep distinct intervals (means will delete transcript names) ##
     print("Removing duplicate intervals (as a result of mult transcripts per gene)")
