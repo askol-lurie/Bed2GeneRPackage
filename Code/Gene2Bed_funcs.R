@@ -18,12 +18,12 @@ getGenes <- function(file){
 }
 
 
-GetMergedGeneIntervals <- function(files, keepXtrans = FALSE, keepNR = FALSE){
+GetMergedGeneIntervals <- function(files, keepXtrans = FALSE, keepNR = TRUE, coding=FALSE){
 
     d <- c()
     ds <- list()
     for (i in 1:length(files)){        
-        ds[[i]] <- GetGeneInterval(files[i], keepXtrans, keepNR)
+        ds[[i]] <- GetGeneInterval(files[i], keepXtrans, keepNR, coding)
     }
 
     for (i in 1:length(ds)){
@@ -41,10 +41,13 @@ GetMergedGeneIntervals <- function(files, keepXtrans = FALSE, keepNR = FALSE){
     return(d)
 }
 
-GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
+GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE, coding=FALSE){
 
     ## KEEPXM: SHOULD POSITIONS INCLUDE TRANSCRIPT THAT START WITH XM (COMPUTATIONAL TRANSCRIPTS)
 
+    ## coding == false: REGION RETURNED IS TRANSCRIPTION START AND END (INCLUDES UTRS)
+    ## coding == true: REGION RETURNED IS CODING START AND END
+    
     ## SETTING START AND END TO BE THE MINIMUM AND MAXIMUM POS OBSERVED ##
     ## FOR A GENE
     print(paste0("Processing file ",file), quote=FALSE)
@@ -58,7 +61,13 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
         print(paste0("Removing ", nrmv, " transcripts starting with NR (non-coding genes)"))
     }
 
-    d <- d %>% select(name2, chrom, txStart, txEnd, strand)  %>% dplyr::rename(gene = name2)
+    if (coding == TRUE){
+        d <- d %>% select(name2, chrom, cdsStart, cdsEnd, strand) %>%
+            rename(gene = name2, start = cdsStart, end = cdsEnd)
+    }else{
+        d <- d %>% select(name2, chrom, txStart, txEnd, strand)  %>%
+            dplyr::rename(gene = name2, start = txStart, end = txEnd)
+    }
     
     ## ADJUST GENES WITH NON OVERLAPPING TRANSCRIPTS. IF A TRANSCRIPT OF A GENE OVERLAPS
     ## WITH NO OTHER TRANSCRIPT OF THAT GENE, THEN PROVIDE IT A NEW NAME:
@@ -66,12 +75,11 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE){
 
     d <- adjustGenes(d)
     
-    d <- d %>% group_by(geneExt, chrom) %>% mutate(start = min(txStart, na.rm=T),
-                                         end = max(txEnd, na.rm=T)) %>%
-        filter(row_number() == 1) %>% ungroup() %>% select(-txStart, -txEnd)
+    d <- d %>% group_by(geneExt, chrom) %>% mutate(startMin = min(start, na.rm=T),
+                                         endMax = max(end, na.rm=T)) %>%
+        filter(row_number() == 1) %>% ungroup() %>% select(-start, -end) %>%
+        rename(start = startMin, end = endMax)
 
-    ## write.table(rng, file = outFile, quote=F, row.names=F, col.names=T)
-    ## print(paste0("Saving gene info to ",outFile))
     return(as.data.frame(d))
 }
 
@@ -187,7 +195,10 @@ gene2bed <- function(genes, geneLocs, prefix, outDir){
 
     ## REMOVE ALTERNATIVE LOCI FROM GENELOCS 
     ind <- grep("_", geneLocs$chrom)
-    genesRm <- unique(geneLocs$geneExt[ind])
+    keepMito <- grep("NC_", geneLocs$chrom)
+    ind <- ind[ind %in% keepMito == FALSE]
+    
+    genesRm <- unique(geneLocs$gene[ind])
     geneLocs <- geneLocs[-ind,]
 
     ## REPORT IF ANY GENES ARE REMOVED THAT ARE ONLY ON ALTERNATIVE LOCI
@@ -242,17 +253,17 @@ adjustGenes <- function(data){
         ungroup() %>% group_by(gene, subjectHits) %>%
         mutate(geneExt = ifelse (gap == 0, gene, paste(gene,int,sep="_"))) %>% ungroup()
 
-    data <- data  %>% select(chrom, txStart, txEnd, strand, gene, geneExt)
+    data <- data  %>% select(chrom, start, end, strand, gene, geneExt)
 
     return(data)
 }
 
 
 makeGeneLocFile <- function(files, mitoFile = "", ResourceDir, Prefix,
-                            build, keepXtrans = FALSE, keepNR = TRUE){
+                            build, keepXtrans = FALSE, keepNR = TRUE, coding = FALSE){
 
     outFile <- paste0(ResourceDir,Prefix,"_",build,".rds")
-    geneLocs <- GetMergedGeneIntervals(files, keepXtrans, keepNR)
+    geneLocs <- GetMergedGeneIntervals(files, keepXtrans, keepNR, coding)
 
       if (mitoFile != ""){
         print(paste0("Adding mitochondrial genes from ",mitoFile))

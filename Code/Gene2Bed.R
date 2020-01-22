@@ -42,9 +42,14 @@ geneLocsFiles38 <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3, geneL
 ## copied from /home/win.ngs/NGS/medex_illumina/Bed_files
 mitoFile <- paste0(ResourceDir, "Mitochondrial_genes.bed")
 
-## STORED GENE LOCATION FILE FOR FAST LOADING ##
+## STORED GENE LOCATION FILE FOR FAST LOADING (transcript) ##
 geneLocFile19 <- paste0(ResourceDir,"GeneLocs_hg19.rds")
 geneLocFile38 <- paste0(ResourceDir,"GeneLocs_hg38.rds")
+
+## STORED GENE LOCATION FILE FOR FAST LOADING (coding) ##
+geneCodingFile19 <- paste0(ResourceDir,"CodingLocs_hg19.rds")
+geneCodingFile38 <- paste0(ResourceDir,"CodingLocs_hg38.rds")
+
 
 ## FILE WITH GENES NOT IN NCBI FILES ##
 trickyGenesFile <- paste0(dirname(SCRDIR), "/Resources/TrickyGenesPositions.txt")
@@ -60,6 +65,10 @@ option_list = list(
               metavar="character"),
   make_option(c("-o", "--out"), type="character", default=NULL, 
               help="Output directory", metavar="character"),
+  make_option(c("-a", "--padding"), type="numeric", default=NULL,
+              help="Add padding +/- (basepairs) (optional , default=0)", metavar="character"),
+  make_option(c("-c", "--coding"), action="store_true", default=FALSE,
+                help="Use the -c flag to output coding start/end instead of transcription")
   make_option(c("-p", "--prefix"), type="character", default=NULL, 
               help="Output File Prefix (optional)", metavar="character"))
   
@@ -107,7 +116,15 @@ prefix = ""
 if (!is.null(opt$prefix)){
     prefix = opt$prefix
 }
-
+## ALLOW PADDING TO BE ADDED TO THE FRONT END OF GENE CODING/TRANSCRIPTION ##
+pad = 0
+if (!is.null(opt$padding)){
+    if (!is.numeric(opt$padding)){
+        stop("Value of additional padding must be numeric")
+    }else{
+        pad <- opt$padding
+    }
+}
 ## ENSURE THE OUTPUT DIRCTORY EXISTS
 if (dir.exists(dirname(opt$out)) == FALSE){
   stop(paste0("Output directory : ", dirname(opt$out), " not found!"), call.=FALSE )
@@ -125,26 +142,34 @@ if (dir.exists(dirname(opt$out)) == FALSE){
 if (0){
     geneLocsFiles <- geneLocsFiles38
     if (opt$build == "hg19"){ geneLocsFiles <- geneLocsFiles19}
-    makeGeneLocFile(files=geneLocsFiles, ResourceDir, Prefix = "GeneLocs", build = opt$build,
-                    keepXtrans = FALSE, keepNR = TRUE)
+    makeGeneLocFile(files=geneLocsFiles, mitoFile = mitoFile, ResourceDir, Prefix = "GeneLocs",
+                    build = opt$build, keepXtrans = FALSE, keepNR = TRUE, coding = FALSE)
 }
 
 if (0){
-     geneLocsFiles <- geneLocsFiles38
+    geneLocsFiles <- geneLocsFiles38
     if (opt$build == "hg19"){ geneLocsFiles <- geneLocsFiles19}
-    makeCodingLocFile(files=geneLocsFiles, ResourceDir, Prefix = "CodingLocs", build = opt$build,
-                    keepXtrans = FALSE, keepNR = TRUE)
+    makeGeneLocFile(files=geneLocsFiles, mitoFile = mitoFile, ResourceDir, Prefix = "CodingLocs",
+                    build = opt$build, keepXtrans = FALSE, keepNR = TRUE, coding = TRUE)
 }
-## GET BED DATA ##
+
+## GET GENE NAMES ##
 genes <- getGenes(opt$geneFile)
 outDir <- opt$out
 
 ## GET STORED GENE LOCATION INFORMATION
 geneLocFile <- geneLocFile38
+geneCodingFile <- geneCodingFile38
 if (opt$build == "hg19"){
     geneLocFile <- geneLocFile19
+    geneCodingFile <- geneCodingFile19
 }
-geneLocs <- readRDS(geneLocFile)
+if (opt$coding == TRUE){
+    genePosFile = geneCodingFile
+}else{
+    genePosFile = geneLocFile
+}
+geneLocs <- readRDS(genePosFile)
 geneLocs$gene <- as.character(geneLocs$gene)
 
 prefix <- paste0(prefix,"_",opt$build)
