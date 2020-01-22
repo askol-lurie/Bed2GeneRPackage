@@ -58,17 +58,16 @@ trickyGenesFile <- paste0(dirname(SCRDIR), "/Resources/TrickyGenesPositions.txt"
 
 option_list = list(
   make_option(c("-b", "--build"), type="character", default=NULL, 
-              help="Reference Build: hg19 or hg38",
-              metavar="character"),
+              help="Reference Build: hg19 or hg38", metavar="character"),
   make_option(c("-g", "--geneFile"), type="character", default=NULL,
               help="List of genes to assign bed intervals (gene in first column)",
               metavar="character"),
   make_option(c("-o", "--out"), type="character", default=NULL, 
               help="Output directory", metavar="character"),
-  make_option(c("-a", "--padding"), type="numeric", default=NULL,
-              help="Add padding +/- (basepairs) (optional , default=0)", metavar="character"),
+  make_option(c("-a", "--padding"), type="integer", default=NULL,
+              help="Add padding +/- (basepairs) (optional , default=0)", metavar="integer"),
   make_option(c("-c", "--coding"), action="store_true", default=FALSE,
-                help="Use the -c flag to output coding start/end instead of transcription")
+                help="Use this flag to output coding start/end instead of transcription start/end"),
   make_option(c("-p", "--prefix"), type="character", default=NULL, 
               help="Output File Prefix (optional)", metavar="character"))
   
@@ -173,9 +172,9 @@ geneLocs <- readRDS(genePosFile)
 geneLocs$gene <- as.character(geneLocs$gene)
 
 prefix <- paste0(prefix,"_",opt$build)
-gene2bed(genes, geneLocs, prefix, outDir)
+gene2bed(genes, geneLocs, prefix, outDir, pad)
 
-
+## 
              
     
     

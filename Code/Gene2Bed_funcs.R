@@ -66,7 +66,7 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE, coding=FAL
             rename(gene = name2, start = cdsStart, end = cdsEnd)
     }else{
         d <- d %>% select(name2, chrom, txStart, txEnd, strand)  %>%
-            dplyr::rename(gene = name2, start = txStart, end = txEnd)
+            rename(gene = name2, start = txStart, end = txEnd)
     }
     
     ## ADJUST GENES WITH NON OVERLAPPING TRANSCRIPTS. IF A TRANSCRIPT OF A GENE OVERLAPS
@@ -191,15 +191,25 @@ codeify <- function(data){
 }
       
     
-gene2bed <- function(genes, geneLocs, prefix, outDir){
+gene2bed <- function(genes, geneLocs, prefix, outDir, pad=0){
 
     ## REMOVE ALTERNATIVE LOCI FROM GENELOCS 
     ind <- grep("_", geneLocs$chrom)
     keepMito <- grep("NC_", geneLocs$chrom)
     ind <- ind[ind %in% keepMito == FALSE]
-    
-    genesRm <- unique(geneLocs$gene[ind])
-    geneLocs <- geneLocs[-ind,]
+
+    genesRm <- c()
+    if (length(ind) > 0){
+        genesRm <- unique(geneLocs$gene[ind])
+        geneLocs <- geneLocs[-ind,]
+        
+        ## IF ANY OF THE REMAINING GENES HAD ALT LOC VERSIONS REMOVED THEY MAY HAVE AN
+        ## UNDERSCORE THAT CAN BE REMOVED
+        geneLocs <- geneLocs %>% group_by(gene) %>%
+            mutate(nints = n_distinct(geneExt),
+                   geneExt = ifelse(nints == 1, gene, geneExt)) %>%
+            ungroup() %>% as.data.frame()
+    }
 
     ## REPORT IF ANY GENES ARE REMOVED THAT ARE ONLY ON ALTERNATIVE LOCI
     ind <- which( (genes %in% genesRm) & (genes %in% geneLocs$gene == FALSE) )
@@ -225,8 +235,14 @@ gene2bed <- function(genes, geneLocs, prefix, outDir){
     ## GET POSITION OF GENES IN GENE LIST
     geneInts <- geneLocs %>% filter(gene %in% genes) %>%
         mutate(gene = geneExt) %>% 
-        select(chrom, start, end, gene) %>% arrange(chrom, start) %>%
+        select(chrom, start, end, gene) %>% arrange(chrom, as.numeric(start)) %>%
         dplyr::rename(chr = chrom)
+
+    ## ADD PADDING IF REQUESTED ##
+    if (pad != 0){
+        print(paste0("Adding ",pad, " bp padding to gene start and end positions"))
+        geneInts <- geneInts %>% mutate(start = start - pad, end = end + pad)
+    }
     
     write.table(file = geneIntFile, geneInts, quote=F, row.names=F, col.names=F, sep="\t")
     print(paste0("Wrote intervals for ", nrow(geneInts), " gene to ",geneIntFile))
