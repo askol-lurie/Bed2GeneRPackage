@@ -18,7 +18,7 @@ getGenes <- function(geneFiles){
     return(genes)
 }
         
-bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
+bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir, rmChrM=TRUE){
 
     ## SET UP OUTPUT FILE PREFIX ##
     if (prefix == ""){
@@ -29,7 +29,18 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
     }
     outFile <- paste0(outFile , "_")
 
+    ## REMOVE ALTERNATIVE LOCI FROM GENELOCS
+    ind <- grep("_", geneLocs$chrom)
+    keepMito <- grep("NC_", geneLocs$chrom)
+    ind <- ind[ind %in% keepMito == FALSE]
 
+    ## REMOVE GENES WITH CHRM (USING NC_012920) INSTEAD
+    if (rmChrM == TRUE){
+        ind <- unique(ind, which(geneLocs$chr == "chrM"))
+    }
+    
+    print(paste0("Removing ", length(ind), " genes on alternative and chrM (NC_012920 used instead) from gene location file."))
+    
     ## IF GENE LIST PROVIDED THEN
     ## 1. TRIM GENELOCS TO ONLY INCLUDE THOSE GENES,
     ## 2. DETERMINE IF ANY GENES IN GENE LIST AREN'T IN GENELOCS,
@@ -59,7 +70,6 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir){
         write.table(file = FileOut, geneLocBed, quote=F, row.names=F, col.names=TRUE, sep="\t")
     }
 
-  
     ## GET BED AND CONVERT TO GRANGE OBJECT
     bed <- read.table(file = file, as.is=T, header=F)
     names(bed)[1:3] <- c("chr","start","stop")

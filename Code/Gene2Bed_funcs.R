@@ -199,7 +199,10 @@ gene2bed <- function(genes, geneLocs, prefix, outDir, pad=0, rmChrM=TRUE){
     ind <- ind[ind %in% keepMito == FALSE]
 
     ## REMOVE GENES WITH CHRM (USING NC_012920) INSTEAD
-    ind <- unique(ind, which(geneLocs$chr == "chrM"))
+    if (rmChrM == TRUE){
+        ind <- unique(ind, which(geneLocs$chr == "chrM"))
+    }
+    
     print(paste0("Removing ", length(ind), " genes on alternative and chrM (NC_012920 used instead)"))
     
     genesRm <- c()
