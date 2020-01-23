@@ -30,8 +30,8 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir, rmChrM=TR
     outFile <- paste0(outFile , "_")
 
     ## REMOVE ALTERNATIVE LOCI FROM GENELOCS
-    ind <- grep("_", geneLocs$chrom)
-    keepMito <- grep("NC_", geneLocs$chrom)
+    ind <- grep("_", geneLocs$chr)
+    keepMito <- grep("NC_", geneLocs$chr)
     ind <- ind[ind %in% keepMito == FALSE]
 
     ## REMOVE GENES WITH CHRM (USING NC_012920) INSTEAD
@@ -78,7 +78,7 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir, rmChrM=TR
     bed <- makeGRangesFromDataFrame(bed, keep.extra.columns=TRUE, seqnames.field = "chr", 
                                     start.field = "start", end.field = "stop",
                                     strand.field = "strand")
-    geneLocs <- makeGRangesFromDataFrame(geneLocs, keep.extra.columns=TRUE, seqnames.field = "seqnames", 
+    geneLocs <- makeGRangesFromDataFrame(geneLocs, keep.extra.columns=TRUE, seqnames.field = "chr", 
                                     start.field = "start", end.field = "end",
                                     strand.field = "strand")
     
@@ -143,6 +143,49 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir, rmChrM=TR
     return()
 }
 
+
+
+makeExonLocFile <- function(files, ResourceDir, mitoFile = "", Prefix = "GeneExons",
+                            build, keepXtrans = FALSE, keepNR = TRUE){
+    
+    ## This is how the gene position file was made ##
+
+    Exons <- c()
+    for (i in 1:length(files)){
+
+        file <- files[i]
+        print(paste0("Processing file ",file), quote=F)
+        
+        tmp <- makeFastGenePos(file, keepXtrans = keepXtrans, keepNR = keepNR)
+
+        if (i != 1){
+            ind <- which(tmp$gene %in% Exons$gene == FALSE)
+            if (length(ind) > 0){
+                tmp <- tmp[ind,]            
+                Exons <- rbind(Exons, tmp)
+            }
+        }
+    }
+
+    if (mitoFile != ""){
+        print(paste0("Adding mitochondrial genes from ",mitoFile))
+        mito <- read.table(file = mitoFile, as.is=T, header=FALSE)
+        names(mito) <- c("chr", "start","end","gene")
+        mito$startCd = mito$start
+        mito$endCd <- mito$end
+        mito$exon <- 1
+        mito$strand <- "+"
+        mito$tran <- mito$gene
+        mito <- mito %>% select(chr, start, end, startCd, endCd, exon, gene, strand, tran)
+        Exons <- rbind(Exons, mito)
+    }
+        
+    outFile <- paste0(ResourceDir, Prefix,"_",build,".rds")
+    saveRDS(file = outFile, Exons)
+
+    print(paste0("Created exon resource files ",outFile), quote=FALSE)    
+}
+
 makeFastGenePos <- function(file, outFile, keepXtrans = FALSE, keepNR = FALSE){
 
     ## KEEPXM: SHOULD POSITIONS INCLUDE TRANSCRIPT THAT START WITH XM (COMPUTATIONAL TRANSCRIPTS)
@@ -165,12 +208,7 @@ makeFastGenePos <- function(file, outFile, keepXtrans = FALSE, keepNR = FALSE){
     ## change d so that each row is an exon
     de <- exonify(d)
     
-    rng <- makeGRangesFromDataFrame(de, keep.extra.columns = T, seqnames.field = "chr",
-                                    start.field = "start", end.field = "end",
-                                    strand.field = "strand")
-    ##saveRDS(rng, file = outFile)
-    ##print(paste0("Saving gene info to ",outFile))
-    return(rng)
+    return(de)
 }
 
 exonify <- function(data){
@@ -184,22 +222,24 @@ exonify <- function(data){
         gene <- data$name2[i]
         strand <-  data$strand[i]
         chrom <- data$chrom[i]
-        cdStart <- data$cdsStart
-        cdEnd <- data$cdsEnd
+        cdStart <- data$cdsStart[i]
+        cdEnd <- data$cdsEnd[i]
         exonPos <- cbind(strsplit(data$exonStarts[i], split=",")[[1]],
                      strsplit(data$exonEnds[i], split=",")[[1]])
         frames <- strsplit(data$exonFrames[i], split=",")[[1]]
-        exonNo <- 1:data$exonCount
+        exonNo <- 1:data$exonCount[i]
         if (strand == "-"){exonNo <- rev(exonNo)}
         cdPos <- exonPos
         cdInd <- which(frames != -1)
-        if (length(utr) < data$exonCount){
-            cdPos[utr,] <- NA
+        if (length(cdInd) < data$exonCount[i]){
+            cdPos[-cdInd,] <- NA
         }
-        cdStartInd <- min(cdInd)
-        cdEndInd <- max(cdInd)
-        cdPos[cdStartInd] <- data$cdsStart
-        cdPos[cdEndInd] <- data$cdsEnd
+        if (length(cdInd) > 0){
+            cdStartInd <- min(cdInd)
+            cdEndInd <- max(cdInd)
+            cdPos[cdStartInd,1] <- cdStart
+            cdPos[cdEndInd,2] <- cdEnd
+        }
             
         de[[i]] <- cbind(chrom, exonPos, cdPos, exonNo, gene, strand, tran)
     }
@@ -211,7 +251,17 @@ exonify <- function(data){
 
     ## keep distinct intervals (means will delete transcript names) ##
     print("Removing duplicate intervals (as a result of mult transcripts per gene)")
-    de <- de %>% group_by(chr,start,end,gene) %>% filter(row_number() == 1) %>% ungroup()
+    de <- de %>% group_by(chr,start,end,gene) %>% filter(row_number() == 1) %>% ungroup() %>%
+        mutate(chr = as.character(chr),
+               start = as.integer(as.character(start)),
+               end = as.integer(as.character(end)),
+               startCd = as.integer(as.character(startCd)),
+               endCd = as.integer(as.character(endCd)),
+               exon = as.numeric(as.character(exon)),
+               gene = as.character(gene),
+               strand = as.character(strand),
+               tran = as.character(tran) )
+               
     
     return(de)
 }
@@ -250,42 +300,3 @@ makeFastGenePos_GeneLevel <- function(file, outFile, keepXtrans = FALSE, keepNR 
     return(rng)
 }
 
-makeExonLocFile <- function(files, ResourceDir, mitoFile = "", Prefix = "GeneExons",
-                            build, keepXtrans = TRUE, keepNR = TRUE){
-    
-    ## This is how the gene position file was made ##
-
-    Exons <- c()
-    for (i in 1:length(files)){
-
-        file <- files[i]
-        print(paste0("Processing file ",file), quote=F)
-        
-        tmp <- makeFastGenePos(file, keepXtrans = FALSE, keepNR = TRUE)
-        tmp <- as.data.frame(tmp)
-
-        if (i != 1){
-            ind <- which(tmp$gene %in% Exons$gene == FALSE)
-            if (length(ind) > 0){
-                tmp <- tmp[ind,]            
-                Exons <- rbind(Exons, tmp)
-            }
-        }
-    }
-
-    if (mitoFile != ""){
-        print(paste0("Adding mitochondrial genes from ",mitoFile))
-        mito <- read.table(file = mitoFile, as.is=T, header=FALSE)
-        names(mito) <- c("seqnames", "start","end","gene")
-        mito$strand <- "+"
-        mito$tran <- mito$gene
-        mito$width <- mito$end - mito$start
-        mito <- mito %>% select(seqnames, start, end, width, strand, gene, tran)
-        Exons <- rbind(Exons, mito)
-    }
-        
-    outFile <- paste0(ResourceDir, Prefix,"_",build,".rds")
-    saveRDS(file = outFile, Exons)
-
-    print(paste0("Created exon resource files ",outFile), quote=FALSE)    
-}
