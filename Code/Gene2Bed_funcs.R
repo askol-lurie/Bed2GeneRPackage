@@ -191,13 +191,17 @@ codeify <- function(data){
 }
       
     
-gene2bed <- function(genes, geneLocs, prefix, outDir, pad=0){
+gene2bed <- function(genes, geneLocs, prefix, outDir, pad=0, rmChrM=TRUE){
 
-    ## REMOVE ALTERNATIVE LOCI FROM GENELOCS 
+    ## REMOVE ALTERNATIVE LOCI FROM GENELOCS
     ind <- grep("_", geneLocs$chrom)
     keepMito <- grep("NC_", geneLocs$chrom)
     ind <- ind[ind %in% keepMito == FALSE]
 
+    ## REMOVE GENES WITH CHRM (USING NC_012920) INSTEAD
+    ind <- unique(ind, which(geneLocs$chr == "chrM"))
+    print(paste0("Removing ", length(ind), " genes on alternative and chrM (NC_012920 used instead)"))
+    
     genesRm <- c()
     if (length(ind) > 0){
         genesRm <- unique(geneLocs$gene[ind])
@@ -281,13 +285,15 @@ makeGeneLocFile <- function(files, mitoFile = "", ResourceDir, Prefix,
     outFile <- paste0(ResourceDir,Prefix,"_",build,".rds")
     geneLocs <- GetMergedGeneIntervals(files, keepXtrans, keepNR, coding)
 
-      if (mitoFile != ""){
+    if (mitoFile != ""){
+        
         print(paste0("Adding mitochondrial genes from ",mitoFile))
         mito <- read.table(file = mitoFile, as.is=T, header=FALSE)
         names(mito) <- c("chrom", "start","end","gene")
         mito$strand <- "+"
         mito$geneExt <- mito$gene
         mito <- mito %>% select(chrom, strand, gene, geneExt, start, end)
+
         geneLocs <- rbind(geneLocs, mito)
       }
     
