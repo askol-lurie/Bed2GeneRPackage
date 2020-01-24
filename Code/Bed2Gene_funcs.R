@@ -249,19 +249,27 @@ exonify <- function(data){
     de <- as.data.frame(de, string.as.factors = FALSE)    
     names(de) <- c("chr","start","end","startCd","endCd", "exon", "gene","strand","tran")
 
+    ## BEFORE REMOVING DISTINCT INTERALS, KEEP TRACK OF THE TRANSCRIPT NAMES IN WHICH THEY ARE
+    ## EXONS AND WHICH EXONS THEY ARE
+    de <- de %>% mutate(tran = as.character(tran),
+                        exon = as.character(exon))
+    de <- de %>% group_by(chr,start,end,gene) %>%
+        summarize(tran = paste(tran, collapse=";"),
+                  exon = paste(exon, collapse=";"),
+                  strand = strand,
+                  startCd = startCd,
+                  endCd = endCd) %>%
+        ungroup()
+    
     ## keep distinct intervals (means will delete transcript names) ##
     print("Removing duplicate intervals (as a result of mult transcripts per gene)")
-    de <- de %>% group_by(chr,start,end,gene) %>% filter(row_number() == 1) %>% ungroup() %>%
-        mutate(chr = as.character(chr),
-               start = as.integer(as.character(start)),
-               end = as.integer(as.character(end)),
-               startCd = as.integer(as.character(startCd)),
-               endCd = as.integer(as.character(endCd)),
-               exon = as.numeric(as.character(exon)),
-               gene = as.character(gene),
-               strand = as.character(strand),
-               tran = as.character(tran) )
-               
+    de <- de %>% mutate(chr = as.character(chr),
+                        start = as.integer(as.character(start)),
+                        end = as.integer(as.character(end)),
+                        startCd = as.integer(as.character(startCd)),
+                        endCd = as.integer(as.character(endCd)),
+                        gene = as.character(gene),
+                        strand = as.character(strand) )
     
     return(de)
 }
