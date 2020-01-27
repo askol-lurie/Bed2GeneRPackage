@@ -253,13 +253,21 @@ exonify <- function(data){
     ## EXONS AND WHICH EXONS THEY ARE
     de <- de %>% mutate(tran = as.character(tran),
                         exon = as.character(exon))
-    de <- de %>% group_by(chr,start,end,gene) %>%
-        summarize(tran = paste(tran, collapse=";"),
-                  exon = paste(exon, collapse=";"),
-                  strand = strand,
-                  startCd = startCd,
-                  endCd = endCd) %>%
-        ungroup()
+    ##
+    print("Collating transcript ids and exons. . .", quote=F)
+    deMultTrans <- de %>% group_by(gene, chr,start,end) %>% filter(n_distinct(tran) > 1) %>%
+        select(chr, start, end, gene, exon, tran)
+    deMultTrans <- deMultTrans %>%
+        summarize(tranCt = paste(tran, collapse=";"), exonCt = paste(exon, collapse=";"))
+    deMultTrans <- deMultTrans %>% ungroup()
+    print("Done collating.", quote=F)
+    
+    ## Replace concatinates transcripts and exons for 
+    de <- de %>% group_by(chr,start,end,gene) %>% filter(row_number() == 1) %>% ungroup()
+    de <- left_join(de, deMultTrans, by = c("chr", "start", "end", "gene"))
+    de <- de %>% mutate(tran = ifelse(!is.na(tranCt), tranCt, tran),
+                        exon = ifelse(!is.na(exonCt), exonCt, exon) ) %>%
+        select(-tranCt, -exonCt)
     
     ## keep distinct intervals (means will delete transcript names) ##
     print("Removing duplicate intervals (as a result of mult transcripts per gene)")
