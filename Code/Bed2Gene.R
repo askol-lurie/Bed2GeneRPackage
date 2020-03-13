@@ -23,14 +23,14 @@ source(paste0(SCRDIR,'/Bed2Gene_funcs.R'))
 ##############
 
 ## GET GENE LOCATIONS USED TO CREATE EXON LOCATION FILES ##
-geneLocsFile19.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
-geneLocsFile19.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
+geneLocsFile19.2 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
+geneLocsFile19.1 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
 geneLocsFile19.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh37.gz")
 geneLocsFile19.4 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31lift37_Comprehensive_GRCh37.gz")
 geneLocsFile19.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psuedogenes_GRCh37.gz")
 
-geneLocsFile38.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
-geneLocsFile38.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
+geneLocsFile38.2 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
+geneLocsFile38.1 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
 geneLocsFile38.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh38.gz")
 geneLocsFile38.4 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_Comprehensive_GRCh38.gz")
 geneLocsFile38.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psuedogenes_GRCh38.gz")

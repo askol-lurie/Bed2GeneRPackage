@@ -63,10 +63,10 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE, coding=FAL
 
     if (coding == TRUE){
         d <- d %>% select(name2, chrom, cdsStart, cdsEnd, strand) %>%
-            rename(gene = name2, start = cdsStart, end = cdsEnd)
+            dplyr::rename(gene = name2, start = cdsStart, end = cdsEnd)
     }else{
         d <- d %>% select(name2, chrom, txStart, txEnd, strand)  %>%
-            rename(gene = name2, start = txStart, end = txEnd)
+            dplyr::rename(gene = name2, start = txStart, end = txEnd)
     }
     
     ## ADJUST GENES WITH NON OVERLAPPING TRANSCRIPTS. IF A TRANSCRIPT OF A GENE OVERLAPS
@@ -78,7 +78,7 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE, coding=FAL
     d <- d %>% group_by(geneExt, chrom) %>% mutate(startMin = min(start, na.rm=T),
                                          endMax = max(end, na.rm=T)) %>%
         filter(row_number() == 1) %>% ungroup() %>% select(-start, -end) %>%
-        rename(start = startMin, end = endMax)
+        dplyr::rename(start = startMin, end = endMax)
 
     return(as.data.frame(d))
 }
@@ -193,6 +193,11 @@ codeify <- function(data){
     
 gene2bed <- function(genes, geneLocs, prefix, outDir, pad=0, rmChrM=TRUE){
 
+    ## REDUCE GENES TO UNIQUE GENES AND REMOVE NAS OR "" ##
+    genes <- unique(na.omit(genes))
+    ind <- which(genes == "")
+    if (length(ind) > 0){ genes <- genes[-ind] }
+    
     ## REMOVE ALTERNATIVE LOCI FROM GENELOCS
     ind <- grep("_", geneLocs$chrom)
     keepMito <- grep("NC_", geneLocs$chrom)
@@ -200,7 +205,7 @@ gene2bed <- function(genes, geneLocs, prefix, outDir, pad=0, rmChrM=TRUE){
 
     ## REMOVE GENES WITH CHRM (USING NC_012920) INSTEAD
     if (rmChrM == TRUE){
-        ind <- unique(ind, which(geneLocs$chr == "chrM"))
+        ind <- unique(c(ind, which(geneLocs$chrom == "chrM")))
     }
     
     print(paste0("Removing ", length(ind), " genes on alternative and chrM (NC_012920 used instead)"))
@@ -236,7 +241,7 @@ gene2bed <- function(genes, geneLocs, prefix, outDir, pad=0, rmChrM=TRUE){
     print(paste0(length(GenesMissing), " genes in gene list but not in RefSeq."))
     print(paste0("Printing list of missing genes to ", missFile))
 
-    ## LIST OF GENES IN MEDEX THAT ARE NOT IN REFSEQ
+    ## LIST OF GENES IN GENE LIST THAT ARE NOT IN REFSEQ
     write.table(file = missFile, GenesMissing, quote=F, row.names=F, col.names=F)
 
     ## GET POSITION OF GENES IN GENE LIST
@@ -313,4 +318,18 @@ makeCodingLocFile <- function(files, ResourceDir, Prefix, build, keepXtrans = FA
     saveRDS(file = outFile, geneLocs)
 
     print(paste("Wrote gene location file to ",outFile))
+}
+
+getCodingLocs <- function(geneCodingFile){
+
+    c <- readRDS(geneCodingFile)
+
+    c <- c %>% select(chr, strand, gene, startCd, endCd) %>%
+        dplyr::rename(chrom = chr, start = startCd, end = endCd) %>%
+        filter(is.na(start) == FALSE) %>%
+        group_by(gene) %>% mutate(row = row_number()) %>% ungroup() %>%
+        mutate(geneExt = paste0(gene, "_", row)) %>%
+        select(chrom, strand, gene, geneExt, start, end)
+
+    return(c)
 }

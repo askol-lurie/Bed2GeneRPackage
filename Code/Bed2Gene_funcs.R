@@ -36,7 +36,7 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir, rmChrM=TR
 
     ## REMOVE GENES WITH CHRM (USING NC_012920) INSTEAD
     if (rmChrM == TRUE){
-        ind <- unique(ind, which(geneLocs$chr == "chrM"))
+        ind <- unique(c(ind, which(geneLocs$chr == "chrM")))
     }
     
     print(paste0("Removing ", length(ind), " genes on alternative and chrM (NC_012920 used instead) from gene location file."))
@@ -74,6 +74,8 @@ bed2gene <- function(file, genes = c(), geneLocs, prefix = "", outDir, rmChrM=TR
     bed <- read.table(file = file, as.is=T, header=F)
     names(bed)[1:3] <- c("chr","start","stop")
     bed$strand = "+"
+    ## Remove any extra columns that were in the bed file ##
+    bed <- bed %>% select(chr, start, stop, strand)
     
     bed <- makeGRangesFromDataFrame(bed, keep.extra.columns=TRUE, seqnames.field = "chr", 
                                     start.field = "start", end.field = "stop",
@@ -155,13 +157,17 @@ makeExonLocFile <- function(files, ResourceDir, mitoFile = "", Prefix = "GeneExo
 
         file <- files[i]
         print(paste0("Processing file ",file), quote=F)
+
+        source <- basename(file)
+        source <- gsub("\\..+","",source)
         
         tmp <- makeFastGenePos(file, keepXtrans = keepXtrans, keepNR = keepNR)
 
         if (i != 1){
             ind <- which(tmp$gene %in% Exons$gene == FALSE)
             if (length(ind) > 0){
-                tmp <- tmp[ind,]            
+                tmp <- tmp[ind,]
+                tmp$source <- source
                 Exons <- rbind(Exons, tmp)
             }
         }
@@ -177,6 +183,9 @@ makeExonLocFile <- function(files, ResourceDir, mitoFile = "", Prefix = "GeneExo
         mito$strand <- "+"
         mito$tran <- mito$gene
         mito <- mito %>% select(chr, start, end, startCd, endCd, exon, gene, strand, tran)
+        source <- basename(mitoFile)
+        source <- gsub("\\..+","",source)
+        mito$source <- source
         Exons <- rbind(Exons, mito)
     }
         
@@ -262,8 +271,14 @@ exonify <- function(data){
     deMultTrans <- deMultTrans %>% ungroup()
     print("Done collating.", quote=F)
     
-    ## Replace concatinates transcripts and exons for 
-    de <- de %>% group_by(chr,start,end,gene) %>% filter(row_number() == 1) %>% ungroup()
+    ## Replace concatinates transcripts and exons for
+    de$startCd = as.numeric(as.character(de$startCd))
+    de$endCd = as.numeric(as.character(de$endCd))
+    de <- de %>% group_by(chr,start,end,gene) %>%
+        summarize(startCd = ifelse(all(is.na(startCd)) , NA, min(startCd, na.rm=T)),
+                  endCd   = ifelse(all(is.na(endCd)),    NA, max(endCd, na.rm=T)),
+                  tran = tran[1], strand = strand[1], exon=exon[1]) %>% ungroup()
+                                                      
     de <- left_join(de, deMultTrans, by = c("chr", "start", "end", "gene"))
     de <- de %>% mutate(tran = ifelse(!is.na(tranCt), tranCt, tran),
                         exon = ifelse(!is.na(exonCt), exonCt, exon) ) %>%
@@ -274,8 +289,6 @@ exonify <- function(data){
     de <- de %>% mutate(chr = as.character(chr),
                         start = as.integer(as.character(start)),
                         end = as.integer(as.character(end)),
-                        startCd = as.integer(as.character(startCd)),
-                        endCd = as.integer(as.character(endCd)),
                         gene = as.character(gene),
                         strand = as.character(strand) )
     

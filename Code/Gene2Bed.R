@@ -24,14 +24,14 @@ source(paste0(SCRDIR,'/Gene2Bed_funcs.R'))
 
 ## GET GENE LOCATIONS USED TO CREATE RESOURCE LOCATION FILE ##
 ## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
-geneLocsFile19.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
-geneLocsFile19.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
+geneLocsFile19.2 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh37.gz")
+geneLocsFile19.1 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh37.gz")
 geneLocsFile19.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh37.gz")
 geneLocsFile19.4 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31lift37_Comprehensive_GRCh37.gz")
 geneLocsFile19.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psuedogenes_GRCh37.gz")
                            
-geneLocsFile38.1 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
-geneLocsFile38.2 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
+geneLocsFile38.2 <- paste0(ResourceDir, "Genes_GenesPredictions_UCSCRefSeq_GRCh38.gz")
+geneLocsFile38.1 <- paste0(ResourceDir, "Genes_GenesPredictions_NCBIRefSeq_GRCh38.gz")
 geneLocsFile38.3 <- paste0(ResourceDir, "Genes_GenesPredictions_OtherUCSCRefSeq_GRCh38.gz")
 geneLocsFile38.4 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_Comprehensive_GRCh38.gz")
 geneLocsFile38.5 <- paste0(ResourceDir, "Genes_GenesPredictions_GENCODEV31_psuedogenes_GRCh38.gz")
@@ -47,12 +47,8 @@ geneLocFile19 <- paste0(ResourceDir,"GeneLocs_hg19.rds")
 geneLocFile38 <- paste0(ResourceDir,"GeneLocs_hg38.rds")
 
 ## STORED GENE LOCATION FILE FOR FAST LOADING (coding) ##
-geneCodingFile19 <- paste0(ResourceDir,"CodingLocs_hg19.rds")
-geneCodingFile38 <- paste0(ResourceDir,"CodingLocs_hg38.rds")
-
-
-## FILE WITH GENES NOT IN NCBI FILES ##
-trickyGenesFile <- paste0(dirname(SCRDIR), "/Resources/TrickyGenesPositions.txt")
+geneCodingFile19 <- paste0(ResourceDir, "GeneExons_hg19.rds")
+geneCodingFile38 <- paste0(ResourceDir, "GeneExons_hg38.rds")
 
 ############
 
@@ -165,14 +161,16 @@ if (opt$build == "hg19"){
 }
 if (opt$coding == TRUE){
     genePosFile = geneCodingFile
+    geneLocs <- getCodingLocs(geneCodingFile)
 }else{
     genePosFile = geneLocFile
+    geneLocs <- readRDS(genePosFile)
 }
-geneLocs <- readRDS(genePosFile)
+
 geneLocs$gene <- as.character(geneLocs$gene)
 
 prefix <- paste0(prefix,"_",opt$build)
-gene2bed(genes, geneLocs, prefix, outDir, pad)
+gene2bed(genes, geneLocs, prefix, outDir, pad=pad)
 
 ## 
              
