@@ -40,11 +40,14 @@ mitoFile <- paste0(ResourceDir, "Mitochondrial_genes.bed") ## copied from /home/
 geneLocsFiles19 <- c(geneLocsFile19.1, geneLocsFile19.2, geneLocsFile19.3, geneLocsFile19.4, geneLocsFile19.5)
 geneLocsFiles38 <- c(geneLocsFile38.1, geneLocsFile38.2, geneLocsFile38.3, geneLocsFile38.4, geneLocsFile38.5)
 
-## GET GENE LOCATIONS ##
+## GET GENE coding LOCATIONS ##
 ## geneLocsFile <- paste0(dirname(SCRDIR), "/Resources/GeneStartEnd37.rds")
 exonLocsFile.19 <- paste0(ResourceDir, "GeneExons_hg19.rds")
 exonLocsFile.38  <- paste0(ResourceDir, "GeneExons_hg38.rds")
 
+## GET GENE START END LOCATIONS ##
+geneLocsFile.19 <- paste0(ResourceDir, "GeneLocs_hg19.rds")
+geneLocsFile.38 <- paste0(ResourceDir, "GeneLocs_hg38.rds")
 
 
 ############
@@ -139,11 +142,16 @@ if (0){
 }
 
 exonLocsFile <- exonLocsFile.38
+geneLocsFile <- geneLocsFile.38
 if (opt$genome == "hg19"){
     exonLocsFile <- exonLocsFile.19
+    geneLocsFile <- geneLocsFile.19
 }
+
 exonLocs <- readRDS(exonLocsFile)
 exonLocs$gene <- as.character(exonLocs$gene)
+
+geneLocs <- readRDS(geneLocsFile)
 
 ## GET BED DATA ##
 bedFiles <- geneFiles <- c()
@@ -161,7 +169,7 @@ outDir <- opt$out
 
 for (file in bedFiles){
     
-    bed2gene(file, genes, exonLocs, prefix, outDir)
+    bed2gene(file, genes, exonLocs, geneLocs, prefix, outDir)
 
 }
              

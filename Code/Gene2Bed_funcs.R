@@ -22,8 +22,10 @@ GetMergedGeneIntervals <- function(files, keepXtrans = FALSE, keepNR = TRUE, cod
 
     d <- c()
     ds <- list()
+    genes <- c()
     for (i in 1:length(files)){        
-        ds[[i]] <- GetGeneInterval(files[i], keepXtrans, keepNR, coding)
+        ds[[i]] <- GetGeneInterval(files[i], keepXtrans, keepNR, coding, genes)
+        genes <- c(genes, unique(ds[[i]]$gene))
     }
 
     for (i in 1:length(ds)){
@@ -31,17 +33,19 @@ GetMergedGeneIntervals <- function(files, keepXtrans = FALSE, keepNR = TRUE, cod
         if (i == 1){
             d <- ds[[i]]
         }else{
-
-            dtmp <- ds[[i]]
-            dtmp <- dtmp %>% filter(dtmp$gene %in% d$gene == FALSE)
-            d <- rbind(d, dtmp)
+            if (nrow(d) > 0){ ## make sure that new genes are added by file
+                dtmp <- ds[[i]]
+                dtmp <- dtmp %>% filter(dtmp$gene %in% d$gene == FALSE)
+                d <- rbind(d, dtmp)
+            }
         }
     }
                
     return(d)
 }
 
-GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE, coding=FALSE){
+GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE,
+                            coding=FALSE, genes){
 
     ## KEEPXM: SHOULD POSITIONS INCLUDE TRANSCRIPT THAT START WITH XM (COMPUTATIONAL TRANSCRIPTS)
 
@@ -52,34 +56,50 @@ GetGeneInterval <- function(file, keepXtrans = FALSE, keepNR = FALSE, coding=FAL
     ## FOR A GENE
     print(paste0("Processing file ",file), quote=FALSE)
     d <- fread(file, header=T)
-    if (keepXtrans == FALSE){
-        d <- d %>% filter(substring(name,1,1) != "X")
-    }
-    if (keepNR == FALSE){
-        nrmv <- sum(substring(d$name, 1, 2) == "NR")
-        d <- d %>% filter(substring(name,1,2) != "NR")
-        print(paste0("Removing ", nrmv, " transcripts starting with NR (non-coding genes)"))
-    }
 
-    if (coding == TRUE){
-        d <- d %>% select(name2, chrom, cdsStart, cdsEnd, strand) %>%
-            dplyr::rename(gene = name2, start = cdsStart, end = cdsEnd)
+    ## remove genes that have already been seen in previous files since
+    ## files are processed in order of preference
+    ## name2 = gene in d
+    d <- d %>% filter(name2 %in% genes == FALSE)
+
+    ## make sure there are additional genes to be processed (e.g. not all genes
+    ## removed
+    no.new.trans <- nrow(d)
+    print(paste0("Number of new transcripts to add: ",no.new.trans), quote=FALSE)
+    if (no.new.trans == 0){
+
+        d = c()
     }else{
-        d <- d %>% select(name2, chrom, txStart, txEnd, strand)  %>%
-            dplyr::rename(gene = name2, start = txStart, end = txEnd)
+        
+        if (keepXtrans == FALSE){
+            d <- d %>% filter(substring(name,1,1) != "X")
+        }
+        if (keepNR == FALSE){
+            nrmv <- sum(substring(d$name, 1, 2) == "NR")
+            d <- d %>% filter(substring(name,1,2) != "NR")
+            print(paste0("Removing ", nrmv, " transcripts starting with NR (non-coding genes)"))
+        }
+        
+        if (coding == TRUE){
+            d <- d %>% select(name2, chrom, cdsStart, cdsEnd, strand) %>%
+                dplyr::rename(gene = name2, start = cdsStart, end = cdsEnd)
+        }else{
+            d <- d %>% select(name2, chrom, txStart, txEnd, strand)  %>%
+                dplyr::rename(gene = name2, start = txStart, end = txEnd)
+        }
+        
+        ## ADJUST GENES WITH NON OVERLAPPING TRANSCRIPTS. IF A TRANSCRIPT OF A GENE OVERLAPS
+        ## WITH NO OTHER TRANSCRIPT OF THAT GENE, THEN PROVIDE IT A NEW NAME:
+        ## GENE_X, WHERE X IS AN INTEGER
+        
+        d <- adjustGenes(d)
+        
+        d <- d %>% group_by(geneExt, chrom) %>%
+            mutate(startMin = min(start, na.rm=T),
+                   endMax = max(end, na.rm=T)) %>%
+            filter(row_number() == 1) %>% ungroup() %>% select(-start, -end) %>%
+            dplyr::rename(start = startMin, end = endMax)
     }
-    
-    ## ADJUST GENES WITH NON OVERLAPPING TRANSCRIPTS. IF A TRANSCRIPT OF A GENE OVERLAPS
-    ## WITH NO OTHER TRANSCRIPT OF THAT GENE, THEN PROVIDE IT A NEW NAME:
-    ## GENE_X, WHERE X IS AN INTEGER
-
-    d <- adjustGenes(d)
-    
-    d <- d %>% group_by(geneExt, chrom) %>% mutate(startMin = min(start, na.rm=T),
-                                         endMax = max(end, na.rm=T)) %>%
-        filter(row_number() == 1) %>% ungroup() %>% select(-start, -end) %>%
-        dplyr::rename(start = startMin, end = endMax)
-
     return(as.data.frame(d))
 }
 
