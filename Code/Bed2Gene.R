@@ -136,7 +136,9 @@ if (dir.exists(dirname(opt$out)) == FALSE){
 
 if (0){
     geneLocsFiles <- geneLocsFiles38
-    if (opt$genome == "hg19"){ geneLocsFiles <- geneLocsFiles19}
+    if (opt$genome == "hg19"){
+        geneLocsFiles <- geneLocsFiles19
+    }
     makeExonLocFile(files=geneLocsFiles, mitoFile = mitoFile, ResourceDir, Prefix = "GeneExons",
                     build = opt$genome,  keepXtrans = FALSE, keepNR = TRUE)
 }

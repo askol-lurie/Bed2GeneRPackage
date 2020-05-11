@@ -79,7 +79,17 @@ bed2gene <- function(file, genes = c(), codingLocs, geneLocs,
     }
     
     ## GET BED AND CONVERT TO GRANGE OBJECT
-    bed <- read.table(file = file, as.is=T, header=F)
+
+    ## determine if there is a header in the bed file (there shouldn't be)
+    ## and read in accordingly
+    tmp <- read.table(file = file, as.is=T, header=F, nrow=1, sep="\t")
+    skipRow = 0
+    if (any(tmp[,3] %in% c("chr","start","end","stop")) |
+        any(is.numeric(tmp[1,2:3]) == FALSE) ){
+        skipRow <- 1
+    }
+    
+    bed <- read.table(file = file, as.is=T, header=F, sep="\t", skip=skipRow)
     names(bed)[1:3] <- c("chr","start","stop")
     bed$strand = "+"
 
@@ -167,7 +177,7 @@ bed2gene <- function(file, genes = c(), codingLocs, geneLocs,
         missedGenesCoding <- genes[genes %in% unique(bed$gene_coding) == F]
         missedGenesTxn <- genes[genes %in% unique(bed$gene_txn) == F]
         
-        if (length(missedGenes) > 0){
+        if (length(missedGenesCoding) > 0){
 
             ## REPORT GENES IN GENE LIST WITH NO CODING REGIONS
             ## IN BED FILE
@@ -176,7 +186,7 @@ bed2gene <- function(file, genes = c(), codingLocs, geneLocs,
             FileOut <- paste0(outDir,"/", outFile, "GenesCodingWoIntervals.txt")
             write.table(file = FileOut, missedGenesTbl, quote=F, row.names=F, col.names=T, sep="\t")
             
-            print(paste0(length(missedGenes), " gene coding regions did not have intervals overlapping them!"))
+            print(paste0(length(missedGenesCoding), " gene coding regions did not have intervals overlapping them!"))
             print(paste0(unique(missedGenesTbl$gene), collapse=", "))
             print(paste0("Missed genes coding regions are written to ",FileOut))
 
@@ -187,7 +197,7 @@ bed2gene <- function(file, genes = c(), codingLocs, geneLocs,
             FileOut <- paste0(outDir,"/", outFile, "GenesTxnWoIntervals.txt")
             write.table(file = FileOut, missedGenesTbl, quote=F, row.names=F, col.names=T, sep="\t")
             
-            print(paste0(length(missedGenes), " gene did not have intervals overlapping them!"))
+            print(paste0(length(missedGenesTxn), " gene did not have intervals overlapping them!"))
             print(paste0(unique(missedGenesTbl$gene), collapse=", "))
             print(paste0("Missed genes are written to ",FileOut))
         }                
@@ -233,16 +243,22 @@ makeExonLocFile <- function(files, ResourceDir, mitoFile = "",
         
         tmp <- makeFastGenePos(file, keepXtrans = keepXtrans, keepNR = keepNR,
                                genes = genes)
-        
+        if (i == 1){
+            tmp$source <- source
+            Exons <- tmp
+            genes <- unique(tmp$gene)
+        }
         if (i != 1 & is.null(tmp) == FALSE){
-            ind <- which(tmp$gene %in% Exons$gene == FALSE)
+            ## ind <- which(tmp$gene %in% Exons$gene == FALSE)
             ##if (length(ind) > 0){
             ##    tmp <- tmp[ind,]
+            ##    
             tmp$source <- source
+            
             Exons <- rbind(Exons, tmp)
                 
             genes <- c(genes, unique(tmp$gene))
-        }        
+        }
     }
     
     if (mitoFile != ""){
