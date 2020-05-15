@@ -85,7 +85,7 @@ bed2gene <- function(file, genes = c(), codingLocs, geneLocs,
     tmp <- read.table(file = file, as.is=T, header=F, nrow=1, sep="\t")
     skipRow = 0
     if (any(tmp[,3] %in% c("chr","start","end","stop")) |
-        any(is.numeric(tmp[1,2:3]) == FALSE) ){
+        any(sapply(tmp[1,2:3], class) %in% c("integer","numeric")) == FALSE){
         skipRow <- 1
     }
     
