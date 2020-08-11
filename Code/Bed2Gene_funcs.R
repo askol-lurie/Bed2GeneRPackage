@@ -243,16 +243,14 @@ makeExonLocFile <- function(files, ResourceDir, mitoFile = "",
         
         tmp <- makeFastGenePos(file, keepXtrans = keepXtrans, keepNR = keepNR,
                                genes = genes)
+
         if (i == 1){
             tmp$source <- source
             Exons <- tmp
             genes <- unique(tmp$gene)
         }
         if (i != 1 & is.null(tmp) == FALSE){
-            ## ind <- which(tmp$gene %in% Exons$gene == FALSE)
-            ##if (length(ind) > 0){
-            ##    tmp <- tmp[ind,]
-            ##    
+
             tmp$source <- source
             
             Exons <- rbind(Exons, tmp)
@@ -342,9 +340,15 @@ exonify <- function(data){
         if (strand == "-"){exonNo <- rev(exonNo)}
         cdPos <- exonPos
         cdInd <- which(frames != -1)
+
         if (length(cdInd) < data$exonCount[i]){
-            cdPos[-cdInd,] <- NA
+            if (length(cdInd) == 0 ){
+                cdPos[,] <- NA
+            }else{
+                cdPos[-cdInd,] <- NA
+            }
         }
+        
         if (length(cdInd) > 0){
             cdStartInd <- min(cdInd)
             cdEndInd <- max(cdInd)
@@ -357,8 +361,11 @@ exonify <- function(data){
     
     de <- do.call(rbind, de)
 
-    de <- as.data.frame(de, string.as.factors = FALSE)    
-    names(de) <- c("chr","start","end","startCd","endCd", "exon", "gene","strand","tran")
+    de <- as.data.frame(de, string.as.factors = FALSE)
+    if (nrow(de) == 0){
+        return(de)
+    }
+        names(de) <- c("chr","start","end","startCd","endCd", "exon", "gene","strand","tran")
 
     ## BEFORE REMOVING DISTINCT INTERALS, KEEP TRACK OF THE TRANSCRIPT NAMES IN WHICH THEY ARE
     ## EXONS AND WHICH EXONS THEY ARE
