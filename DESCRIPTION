@@ -1,0 +1,16 @@
+Package: Bed2Gene
+Version: 0.1.0
+Data: 2020-10-13
+Title: Annotate BED file with genes
+Description: Annotate a BED file to with gene names from NCBI RefSeq annoation
+Author: Andrew Skol <askol@luriechildrens.org>
+Maintainer: Andrew Skol <askol@luriechildrens.org>
+License: GPL-3
+RoxygenNote: 7.1.1
+Depends: 
+    R (>= 3.5.0)
+Encoding: UTF-8
+Imports:
+  dplyr,
+  GenomicRanges
+    
