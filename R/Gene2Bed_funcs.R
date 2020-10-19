@@ -1,8 +1,8 @@
 #' Create a BED file containing the coding regions of genes
 #'
 #' Create a BED file of coding exons for a user-specified set of genes. Padding can be added#'
-#' @param file BED file
 #' @param genes List of genes for which coding exons should be output coding exons. 
+#' @param genefile A file that contains one gene per line
 #' @param prefix Prefix for output files (optional)
 #' @param outDir Output directory (optional)
 #' @param pad Amount of padding up and downstream of coding exon (in bp) (default = 0)
@@ -14,7 +14,7 @@
 #' @seealso \code{\link{bed2gene}}
 #' @keywords utilities
 #'
-#' @examples gene2bed(c("TP53","HNF4A"), prefix="MyGenes",pad=10, rmChrM=TRUE)
+#' @examples gene2bed(c("TP53","HNF4A"), prefix="MyGenes", pad=10, rmChrM=TRUE)
 #'
 #' @export
 #'            

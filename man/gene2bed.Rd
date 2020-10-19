@@ -17,7 +17,7 @@ gene2bed(genes, geneFile, prefix, outDir, pad = 0, rmChrM = TRUE)
 
 \item{rmChrM}{Indicates if mitochondrial genes should be output (TRUE/FALSE) (default is TRUE)}
 
-\item{file}{BED file}
+\item{genefile}{A file that contains one gene per line}
 }
 \value{
 Null
@@ -26,7 +26,7 @@ Null
 Create a BED file of coding exons for a user-specified set of genes. Padding can be added#'
 }
 \examples{
-gene2bed(c("TP53","HNF4A"), prefix="MyGenes",pad=10, rmChrM=TRUE)
+gene2bed(c("TP53","HNF4A"), prefix="MyGenes", pad=10, rmChrM=TRUE)
 
 }
 \seealso{

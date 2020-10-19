@@ -7,6 +7,7 @@
 #' @param geneFile File containing genes. Only output and annotation for intervals that overlap genes in the file will be output. Alternately, genes can be entered using the gene argument. (optional)
 #' @param prefix Prefix for output files (optional)
 #' @param outDir Output directory. If not given results will be printed to pwd(). (optional)
+#' @param build Build reference for the position coordingates int he BED file (hg19 or hg38)
 #' @param rmChrM Indicates if mitochondrial genes should be output and annotated (TRUE/FALSE)
 #' 
 #' @return Null
@@ -24,9 +25,10 @@ bed2gene <- function(file,
                      geneFile = "", 
                      prefix = "", 
                      outDir = pwd(), 
+                     build = "hg19",
                      rmChrM=TRUE){
 
-    checkArgs(file, genes, geneFile, prefix, outDir, rmChrM)
+    checkArgs(file, genes, geneFile, prefix, outDir, build, rmChrM)
   
     ## SET UP OUTPUT FILE PREFIX ##
     if (prefix == ""){
@@ -36,6 +38,16 @@ bed2gene <- function(file,
     }
     outFile <- paste0(outFile , "_")
 
+    ## set codinglocs based on build
+    if (build == "hg19"){
+      codingLocs <- exons19
+      geneLocs <- genes19
+      
+    }else{
+      codingLocs = exons38
+      geneLocs <- genes38
+    }
+    
     ## REMOVE ALTERNATIVE LOCI FROM GENELOCS
     ind <- grep("_", codingLocs$chr)
     keepMito <- grep("NC_", codingLocs$chr)
@@ -100,8 +112,9 @@ bed2gene <- function(file,
     bed$strand = "+"
 
     ## Remove any extra columns that were in the bed file ##
-    bed <- bed %>% select(chr, start, stop, strand)
-    
+    bed <- bed %>% dplyr::select(chr, start, stop, strand) %>% 
+      dplyr::mutate(chr = as.character(chr))
+        
     bed <- makeGRangesFromDataFrame(bed, keep.extra.columns=TRUE,
                                     seqnames.field = "chr", 
                                     start.field = "start", end.field = "stop",
@@ -170,7 +183,8 @@ bed2gene <- function(file,
     bed$gene_txn[ol.gene$queryHits] <- ol.gene$gene
     
     ## CHANGE CHROMOSOME COLUMN NAME BACK TO CHR INSTEAD OF SEQNAMES ##
-    bed <- bed %>% as.data.frame() %>% rename(chr = seqnames)
+    bed <- bed %>% as.data.frame() 
+    ## bed <- bed %>% dplyr::rename(chr = seqnames)
     
     FileOut <- paste0(outDir,"/", outFile, "AllInts_wGenes.bed")
     write.table(file = FileOut, bed, quote=F, row.names=F, col.names=T,
@@ -228,7 +242,7 @@ bed2gene <- function(file,
     return()
 }
 
-checkArgs <-  function(file, genes, geneFile, prefix, outDir, rmChrM){
+checkArgs <-  function(file, genes, geneFile, prefix, outDir, build, rmChrM){
   
   if (is.null(file)){
     stop("You must specify a BED file (file = <bedfile.bed>", 
@@ -243,6 +257,9 @@ checkArgs <-  function(file, genes, geneFile, prefix, outDir, rmChrM){
   if (dir.exists(outDir) == FALSE){
     stop(paste("The specified output directory was not found:", outDir),
          call. = FALSE)
+  }
+  if (build %in% c("hg19", "hg38") == FALSE){
+    stop("Build agruement must be hg19 or hg38")
   }
   if (as.character(rmChrM) %in% c("TRUE","FALSE","T","F") == FALSE){
     stop("rmChrM must be TRUE or FALSE", call. = FALSE)

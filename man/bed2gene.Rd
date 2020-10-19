@@ -10,6 +10,7 @@ bed2gene(
   geneFile = "",
   prefix = "",
   outDir = pwd(),
+  build = "hg19",
   rmChrM = TRUE
 )
 }
@@ -23,6 +24,8 @@ bed2gene(
 \item{prefix}{Prefix for output files (optional)}
 
 \item{outDir}{Output directory. If not given results will be printed to pwd(). (optional)}
+
+\item{build}{Build reference for the position coordingates int he BED file (hg19 or hg38)}
 
 \item{rmChrM}{Indicates if mitochondrial genes should be output and annotated (TRUE/FALSE)}
 }

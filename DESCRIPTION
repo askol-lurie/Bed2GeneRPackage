@@ -8,9 +8,11 @@ Maintainer: Andrew Skol <askol@luriechildrens.org>
 License: GPL-3
 RoxygenNote: 7.1.1
 Depends: 
-    R (>= 3.5.0)
+    R (>= 3.5.0), 
+    dplyr (>= 1.0.1),
+    GenomicRanges
 Encoding: UTF-8
 Imports:
-  dplyr,
+  dplyr (>= 1.0.1),
   GenomicRanges
     
